@@ -23,6 +23,8 @@ FluContentPage {
     property string selectedAppVersionCode: ""
     property string selectedAppIcon: ""
     property bool selectedIsSystem: false
+    property bool selectedIsEnabled: true
+    property bool selectedInstalledForCurrentUser: true
     property string selectedInstallDate: ""
     property string selectedLastUpdate: ""
     property string selectedMinSdk: ""
@@ -30,7 +32,7 @@ FluContentPage {
     property string selectedAppPath: ""
     property string selectedAppId: ""
 
-    // Multi-selection state: { [pkg]: { packageName, appName, isSystemApp } }
+    // Multi-selection state: { [pkg]: { packageName, appName, isSystemApp, isEnabled, installedForCurrentUser } }
     property var selectedMap: ({})
     readonly property int selectedCount: Object.keys(selectedMap).length
 
@@ -54,6 +56,18 @@ FluContentPage {
     property string lastReportedResult: ""
     property string lastReportedReason: ""
 
+    // Batch restore state machine
+    property var restoreQueue: []
+    property int restoreTotal: 0
+    property int restoreIndex: 0
+    property string restoreCurrentPkg: ""
+    property string restoreCurrentName: ""
+    property var restoreSuccessList: []
+    property var restoreFailList: []
+    property bool restoreRunning: false
+    property string restoreState: "dispatch" // "dispatch" | "waiting"
+    property int restoreStepTimeout: 0
+
     // Generic batch action queue
     property var batchQueue: []
     property string batchActionType: ""
@@ -73,16 +87,30 @@ FluContentPage {
     Connections {
         target: NotificationController
         function onRequestNotification() {
-            if (!page.uninstallRunning) return
             var title = NotificationController.title || ""
             var content = NotificationController.content || ""
-            if (page.uninstallCurrentPkg.length > 0 &&
-                (content.indexOf(page.uninstallCurrentPkg) !== -1 || content === page.uninstallCurrentPkg)) {
-                if (title.indexOf("成功") !== -1) {
-                    page.lastReportedResult = "success"
-                } else if (title.indexOf("失败") !== -1) {
-                    page.lastReportedResult = "fail"
-                    page.lastReportedReason = title
+
+            if (page.uninstallRunning) {
+                if (page.uninstallCurrentPkg.length > 0 &&
+                    (content.indexOf(page.uninstallCurrentPkg) !== -1 || content === page.uninstallCurrentPkg)) {
+                    if (title.indexOf("成功") !== -1) {
+                        page.lastReportedResult = "success"
+                    } else if (title.indexOf("失败") !== -1) {
+                        page.lastReportedResult = "fail"
+                        page.lastReportedReason = title
+                    }
+                }
+            }
+
+            if (page.restoreRunning) {
+                if (page.restoreCurrentPkg.length > 0 &&
+                    (content.indexOf(page.restoreCurrentPkg) !== -1 || content === page.restoreCurrentPkg)) {
+                    if (title.indexOf("成功") !== -1) {
+                        page.lastReportedResult = "success"
+                    } else if (title.indexOf("失败") !== -1) {
+                        page.lastReportedResult = "fail"
+                        page.lastReportedReason = title
+                    }
                 }
             }
         }
@@ -104,13 +132,15 @@ FluContentPage {
         appRegistry = reg
     }
 
-    function selectAppForDetail(pkg, name, ver, icon, isSys, vCode, fTime, lTime, mSdk, tSdk, path, appId) {
+    function selectAppForDetail(pkg, name, ver, icon, isSys, vCode, fTime, lTime, mSdk, tSdk, path, appId, isEnabled, isInstalled) {
         page.selectedPackage = pkg || ""
         page.selectedAppName = name || ""
         page.selectedAppVersion = ver || ""
         page.selectedAppVersionCode = vCode !== undefined && vCode !== null ? String(vCode) : ""
         page.selectedAppIcon = icon || ""
         page.selectedIsSystem = !!isSys
+        page.selectedIsEnabled = (isEnabled !== undefined && isEnabled !== null) ? !!isEnabled : true
+        page.selectedInstalledForCurrentUser = (isInstalled !== undefined && isInstalled !== null) ? !!isInstalled : true
         page.selectedInstallDate = fTime || ""
         page.selectedLastUpdate = lTime || ""
         page.selectedMinSdk = mSdk !== undefined && mSdk !== null ? String(mSdk) : ""
@@ -126,7 +156,7 @@ FluContentPage {
         }
     }
 
-    function toggleSelect(pkg, name, isSys) {
+    function toggleSelect(pkg, name, isSys, isEnabled, isInstalled) {
         if (!pkg) return
         var map = Object.assign({}, page.selectedMap)
         if (map[pkg]) {
@@ -135,7 +165,9 @@ FluContentPage {
             map[pkg] = {
                 packageName: pkg,
                 appName: name || pkg,
-                isSystemApp: !!isSys
+                isSystemApp: !!isSys,
+                isEnabled: (isEnabled !== undefined && isEnabled !== null) ? !!isEnabled : true,
+                installedForCurrentUser: (isInstalled !== undefined && isInstalled !== null) ? !!isInstalled : true
             }
         }
         page.selectedMap = map
@@ -159,11 +191,15 @@ FluContentPage {
             var pkg = SoftListModel.data(idx, 257) // AppPackageRole
             var name = SoftListModel.data(idx, 258) // AppNameRole
             var isSys = SoftListModel.data(idx, 261) // AppIsSystemRole
+            var isEn = SoftListModel.data(idx, 262) // AppIsEnabledRole
+            var isInst = SoftListModel.data(idx, 270) // AppInstalledForCurrentUserRole
             if (pkg && pkg.length > 0) {
                 return {
                     packageName: pkg,
                     appName: (name && name.length > 0) ? name : pkg,
-                    isSystemApp: !!isSys
+                    isSystemApp: !!isSys,
+                    isEnabled: isEn !== undefined ? !!isEn : true,
+                    installedForCurrentUser: isInst !== undefined ? !!isInst : true
                 }
             }
         } catch(e) {}
@@ -211,7 +247,9 @@ FluContentPage {
             map[item.packageName] = {
                 packageName: item.packageName,
                 appName: item.appName || item.packageName,
-                isSystemApp: !!item.isSystemApp
+                isSystemApp: !!item.isSystemApp,
+                isEnabled: item.isEnabled !== undefined ? !!item.isEnabled : true,
+                installedForCurrentUser: item.installedForCurrentUser !== undefined ? !!item.installedForCurrentUser : true
             }
         }
         page.selectedMap = map
@@ -232,7 +270,9 @@ FluContentPage {
                 map[item.packageName] = {
                     packageName: item.packageName,
                     appName: item.appName || item.packageName,
-                    isSystemApp: !!item.isSystemApp
+                    isSystemApp: !!item.isSystemApp,
+                    isEnabled: item.isEnabled !== undefined ? !!item.isEnabled : true,
+                    installedForCurrentUser: item.installedForCurrentUser !== undefined ? !!item.installedForCurrentUser : true
                 }
             }
         }
@@ -275,6 +315,8 @@ FluContentPage {
                 AppDetailControl.startApp(pkg)
             } else if (page.batchActionType === "stop") {
                 AppDetailControl.stopApp(pkg)
+            } else if (page.batchActionType === "enable") {
+                AppDetailControl.enableApp(pkg)
             } else if (page.batchActionType === "freeze") {
                 AppDetailControl.freezeApp(pkg)
             } else if (page.batchActionType === "clearData") {
@@ -308,6 +350,120 @@ FluContentPage {
 
         batchUninstallProgressPopup.open()
         uninstallTimer.restart()
+    }
+
+    // Batch restore state machine
+    function startBatchRestore() {
+        var list = getSelectedList()
+        if (list.length === 0) return
+        batchRestoreConfirmPopup.close()
+
+        page.restoreQueue = list
+        page.restoreTotal = list.length
+        page.restoreIndex = 0
+        page.restoreCurrentPkg = ""
+        page.restoreCurrentName = ""
+        page.restoreSuccessList = []
+        page.restoreFailList = []
+        page.lastReportedResult = ""
+        page.lastReportedReason = ""
+        page.restoreStepTimeout = 0
+        page.restoreState = "dispatch"
+        page.restoreRunning = true
+
+        batchRestoreProgressPopup.open()
+        restoreTimer.restart()
+    }
+
+    Timer {
+        id: restoreTimer
+        interval: 180
+        repeat: true
+        onTriggered: {
+            if (!page.restoreRunning) {
+                stop()
+                return
+            }
+
+            if (page.restoreState === "dispatch") {
+                if (page.restoreIndex >= page.restoreQueue.length) {
+                    page.restoreRunning = false
+                    stop()
+                    batchRestoreProgressPopup.close()
+                    page.deselectAll()
+                    AppDetailControl.requestUpdateSoftList()
+                    batchRestoreSummaryPopup.open()
+                    return
+                }
+
+                if (AppDetailControl.busy) return
+
+                var currentItem = page.restoreQueue[page.restoreIndex]
+                page.restoreCurrentPkg = currentItem.packageName
+                page.restoreCurrentName = currentItem.appName || currentItem.packageName
+                page.lastReportedResult = ""
+                page.lastReportedReason = ""
+                page.restoreStepTimeout = 0
+                page.restoreState = "waiting"
+
+                AppDetailControl.restoreApp(currentItem.packageName)
+                return
+            }
+
+            if (page.restoreState === "waiting") {
+                page.restoreStepTimeout++
+
+                var stepFinished = false
+                if (page.lastReportedResult.length > 0 && !AppDetailControl.busy) {
+                    stepFinished = true
+                } else if (page.restoreStepTimeout > 3 && !AppDetailControl.busy) {
+                    stepFinished = true
+                } else if (page.restoreStepTimeout > 65) {
+                    // Timeout after ~12s
+                    stepFinished = true
+                    if (page.lastReportedResult.length === 0) {
+                        page.lastReportedResult = "fail"
+                        page.lastReportedReason = "操作超时"
+                    }
+                }
+
+                if (stepFinished) {
+                    if (page.lastReportedResult === "fail") {
+                        page.restoreFailList.push({
+                            packageName: page.restoreCurrentPkg,
+                            appName: page.restoreCurrentName,
+                            reason: page.lastReportedReason || "恢复失败"
+                        })
+                    } else {
+                        page.restoreSuccessList.push({
+                            packageName: page.restoreCurrentPkg,
+                            appName: page.restoreCurrentName
+                        })
+                    }
+
+                    page.restoreIndex++
+                    page.restoreState = "dispatch"
+                    page.restoreStepTimeout = 0
+                }
+            }
+        }
+    }
+
+    function cancelBatchRestore() {
+        page.restoreRunning = false
+        restoreTimer.stop()
+        for (var i = page.restoreIndex; i < page.restoreQueue.length; i++) {
+            var item = page.restoreQueue[i]
+            page.restoreFailList.push({
+                packageName: item.packageName,
+                appName: item.appName || item.packageName,
+                reason: "用户取消操作"
+            })
+        }
+        batchRestoreProgressPopup.close()
+        page.deselectAll()
+        AppDetailControl.requestUpdateSoftList()
+        batchRestoreSummaryPopup.open()
     }
 
     Timer {
@@ -490,10 +646,10 @@ FluContentPage {
                         onTextChanged: page.searchQuery = text
                     }
 
-                    // 筛选器：[全部] [第三方] [系统]
+                    // 筛选器：[全部] [第三方] [系统] [已停用] [已卸载]
                     Rectangle {
                         Layout.preferredHeight: 32
-                        Layout.preferredWidth: 190
+                        Layout.preferredWidth: 350
                         radius: 7
                         color: FluTheme.dark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.04)
                         border.width: 1
@@ -504,7 +660,7 @@ FluContentPage {
                             anchors.margins: 2
                             spacing: 2
 
-                            // 0: 第三方, 1: 系统, 2: 全部
+                            // 2: 全部
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
@@ -530,6 +686,7 @@ FluContentPage {
                                 }
                             }
 
+                            // 0: 第三方
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
@@ -555,6 +712,7 @@ FluContentPage {
                                 }
                             }
 
+                            // 1: 系统
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
@@ -579,6 +737,58 @@ FluContentPage {
                                     onClicked: { AppDetailControl.softListType = 1 }
                                 }
                             }
+
+                            // 3: 已停用
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                radius: 5
+                                color: AppDetailControl.softListType === 3
+                                       ? Qt.rgba(0.06, 0.48, 0.42, FluTheme.dark ? 0.45 : 0.25)
+                                       : (disabledMouse.containsMouse ? (FluTheme.dark ? Qt.rgba(1,1,1,0.08) : Qt.rgba(0,0,0,0.05)) : "transparent")
+                                border.width: AppDetailControl.softListType === 3 ? 1 : 0
+                                border.color: "#0f7b6c"
+
+                                FluText {
+                                    anchors.centerIn: parent
+                                    text: "已停用"
+                                    font: FluTextStyle.Caption
+                                    color: AppDetailControl.softListType === 3 ? (FluTheme.dark ? "#5eead4" : "#0f7b6c") : FluTheme.fontPrimaryColor
+                                }
+                                MouseArea {
+                                    id: disabledMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: { AppDetailControl.softListType = 3 }
+                                }
+                            }
+
+                            // 4: 已卸载
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                radius: 5
+                                color: AppDetailControl.softListType === 4
+                                       ? Qt.rgba(0.06, 0.48, 0.42, FluTheme.dark ? 0.45 : 0.25)
+                                       : (uninstalledMouse.containsMouse ? (FluTheme.dark ? Qt.rgba(1,1,1,0.08) : Qt.rgba(0,0,0,0.05)) : "transparent")
+                                border.width: AppDetailControl.softListType === 4 ? 1 : 0
+                                border.color: "#0f7b6c"
+
+                                FluText {
+                                    anchors.centerIn: parent
+                                    text: "已卸载"
+                                    font: FluTextStyle.Caption
+                                    color: AppDetailControl.softListType === 4 ? (FluTheme.dark ? "#5eead4" : "#0f7b6c") : FluTheme.fontPrimaryColor
+                                }
+                                MouseArea {
+                                    id: uninstalledMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: { AppDetailControl.softListType = 4 }
+                                }
+                            }
                         }
                     }
 
@@ -590,7 +800,7 @@ FluContentPage {
                         icon: FluentIcons.Sync
                         dense: true
                         Layout.preferredWidth: 80
-                        enabled: !AppDetailControl.busy && !page.uninstallRunning
+                        enabled: !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning
                         onPressed: AppDetailControl.requestUpdateSoftList()
                     }
 
@@ -600,7 +810,7 @@ FluContentPage {
                         dense: true
                         accent: "#0f7b6c"
                         Layout.preferredWidth: 102
-                        enabled: !!page.device && !AppDetailControl.busy && !page.uninstallRunning
+                        enabled: !!page.device && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning
                         onPressed: apkDialog.open()
                     }
                 }
@@ -614,7 +824,7 @@ FluContentPage {
                         label: "全选"
                         dense: true
                         Layout.preferredWidth: 64
-                        enabled: appListView.count > 0 && !page.uninstallRunning
+                        enabled: appListView.count > 0 && !page.uninstallRunning && !page.restoreRunning
                         onPressed: page.selectAll()
                     }
 
@@ -622,7 +832,7 @@ FluContentPage {
                         label: "取消全选"
                         dense: true
                         Layout.preferredWidth: 80
-                        enabled: page.selectedCount > 0 && !page.uninstallRunning
+                        enabled: page.selectedCount > 0 && !page.uninstallRunning && !page.restoreRunning
                         onPressed: page.deselectAll()
                     }
 
@@ -630,7 +840,7 @@ FluContentPage {
                         label: "反选"
                         dense: true
                         Layout.preferredWidth: 64
-                        enabled: appListView.count > 0 && !page.uninstallRunning
+                        enabled: appListView.count > 0 && !page.uninstallRunning && !page.restoreRunning
                         onPressed: page.invertSelection()
                     }
 
@@ -757,7 +967,9 @@ FluContentPage {
                                     page.registerApp({
                                         packageName: model.packageName,
                                         appName: model.appName || model.packageName,
-                                        isSystemApp: !!model.isSystemApp
+                                        isSystemApp: !!model.isSystemApp,
+                                        isEnabled: model.isEnabled !== undefined ? !!model.isEnabled : true,
+                                        installedForCurrentUser: model.installedForCurrentUser !== undefined ? !!model.installedForCurrentUser : true
                                     })
                                 }
                             }
@@ -793,7 +1005,7 @@ FluContentPage {
                                         Layout.preferredWidth: 26
                                         checked: page.isSelected(model.packageName)
                                         clickListener: function() {
-                                            page.toggleSelect(model.packageName, model.appName || model.packageName, !!model.isSystemApp)
+                                            page.toggleSelect(model.packageName, model.appName || model.packageName, !!model.isSystemApp, model.isEnabled, model.installedForCurrentUser)
                                         }
                                     }
 
@@ -803,7 +1015,7 @@ FluContentPage {
                                         Layout.preferredHeight: 32
                                         source: model.icon || ""
                                         title: model.appName || model.packageName || ""
-                                        accent: model.isSystemApp ? "#64748b" : "#0f7b6c"
+                                        accent: model.installedForCurrentUser === false ? "#d83b01" : (model.isEnabled === false ? "#ca8a04" : (model.isSystemApp ? "#64748b" : "#0f7b6c"))
                                     }
 
                                     // App 名称与包名
@@ -845,17 +1057,43 @@ FluContentPage {
                                         Layout.preferredWidth: 50
                                         Layout.preferredHeight: 20
                                         radius: 4
-                                        color: model.isSystemApp
-                                               ? (FluTheme.dark ? Qt.rgba(0.4, 0.45, 0.55, 0.22) : Qt.rgba(0.4, 0.45, 0.55, 0.14))
-                                               : (FluTheme.dark ? Qt.rgba(0.06, 0.48, 0.42, 0.25) : Qt.rgba(0.06, 0.48, 0.42, 0.14))
+                                        color: {
+                                            if (model.installedForCurrentUser === false) {
+                                                return FluTheme.dark ? Qt.rgba(0.85, 0.23, 0.0, 0.25) : Qt.rgba(0.85, 0.23, 0.0, 0.14)
+                                            } else if (model.isEnabled === false) {
+                                                return FluTheme.dark ? Qt.rgba(0.79, 0.54, 0.02, 0.25) : Qt.rgba(0.79, 0.54, 0.02, 0.14)
+                                            } else if (model.isSystemApp) {
+                                                return FluTheme.dark ? Qt.rgba(0.4, 0.45, 0.55, 0.22) : Qt.rgba(0.4, 0.45, 0.55, 0.14)
+                                            } else {
+                                                return FluTheme.dark ? Qt.rgba(0.06, 0.48, 0.42, 0.25) : Qt.rgba(0.06, 0.48, 0.42, 0.14)
+                                            }
+                                        }
                                         border.width: 1
-                                        border.color: model.isSystemApp ? Qt.rgba(0.4, 0.45, 0.55, 0.4) : Qt.rgba(0.06, 0.48, 0.42, 0.4)
+                                        border.color: {
+                                            if (model.installedForCurrentUser === false) {
+                                                return Qt.rgba(0.85, 0.23, 0.0, 0.4)
+                                            } else if (model.isEnabled === false) {
+                                                return Qt.rgba(0.79, 0.54, 0.02, 0.4)
+                                            } else if (model.isSystemApp) {
+                                                return Qt.rgba(0.4, 0.45, 0.55, 0.4)
+                                            } else {
+                                                return Qt.rgba(0.06, 0.48, 0.42, 0.4)
+                                            }
+                                        }
 
                                         FluText {
                                             anchors.centerIn: parent
-                                            text: model.isSystemApp ? "系统" : "第三方"
+                                            text: {
+                                                if (model.installedForCurrentUser === false) return "已卸载"
+                                                if (model.isEnabled === false) return "已停用"
+                                                return model.isSystemApp ? "系统" : "第三方"
+                                            }
                                             font: FluTextStyle.Caption
-                                            color: model.isSystemApp ? "#94a3b8" : "#10b981"
+                                            color: {
+                                                if (model.installedForCurrentUser === false) return "#ef4444"
+                                                if (model.isEnabled === false) return "#eab308"
+                                                return model.isSystemApp ? "#94a3b8" : "#10b981"
+                                            }
                                         }
                                     }
                                 }
@@ -880,7 +1118,9 @@ FluContentPage {
                                             model.minSdk,
                                             model.targetSdk,
                                             model.path,
-                                            model.appId
+                                            model.appId,
+                                            model.isEnabled,
+                                            model.installedForCurrentUser
                                         )
                                     }
                                 }
@@ -982,19 +1222,49 @@ FluContentPage {
                                 RowLayout {
                                     spacing: 6
                                     Rectangle {
-                                        Layout.preferredWidth: 46
+                                        Layout.preferredWidth: {
+                                            if (page.selectedInstalledForCurrentUser === false) return 46
+                                            if (page.selectedIsEnabled === false) return 46
+                                            return page.selectedIsSystem ? 58 : 46
+                                        }
                                         Layout.preferredHeight: 18
                                         radius: 4
-                                        color: page.selectedIsSystem
-                                               ? (FluTheme.dark ? Qt.rgba(0.4, 0.45, 0.55, 0.22) : Qt.rgba(0.4, 0.45, 0.55, 0.14))
-                                               : (FluTheme.dark ? Qt.rgba(0.06, 0.48, 0.42, 0.25) : Qt.rgba(0.06, 0.48, 0.42, 0.14))
+                                        color: {
+                                            if (page.selectedInstalledForCurrentUser === false) {
+                                                return FluTheme.dark ? Qt.rgba(0.85, 0.23, 0.0, 0.25) : Qt.rgba(0.85, 0.23, 0.0, 0.14)
+                                            } else if (page.selectedIsEnabled === false) {
+                                                return FluTheme.dark ? Qt.rgba(0.79, 0.54, 0.02, 0.25) : Qt.rgba(0.79, 0.54, 0.02, 0.14)
+                                            } else if (page.selectedIsSystem) {
+                                                return FluTheme.dark ? Qt.rgba(0.4, 0.45, 0.55, 0.22) : Qt.rgba(0.4, 0.45, 0.55, 0.14)
+                                            } else {
+                                                return FluTheme.dark ? Qt.rgba(0.06, 0.48, 0.42, 0.25) : Qt.rgba(0.06, 0.48, 0.42, 0.14)
+                                            }
+                                        }
                                         border.width: 1
-                                        border.color: page.selectedIsSystem ? Qt.rgba(0.4, 0.45, 0.55, 0.4) : Qt.rgba(0.06, 0.48, 0.42, 0.4)
+                                        border.color: {
+                                            if (page.selectedInstalledForCurrentUser === false) {
+                                                return Qt.rgba(0.85, 0.23, 0.0, 0.4)
+                                            } else if (page.selectedIsEnabled === false) {
+                                                return Qt.rgba(0.79, 0.54, 0.02, 0.4)
+                                            } else if (page.selectedIsSystem) {
+                                                return Qt.rgba(0.4, 0.45, 0.55, 0.4)
+                                            } else {
+                                                return Qt.rgba(0.06, 0.48, 0.42, 0.4)
+                                            }
+                                        }
                                         FluText {
                                             anchors.centerIn: parent
-                                            text: page.selectedIsSystem ? "系统应用" : "第三方"
+                                            text: {
+                                                if (page.selectedInstalledForCurrentUser === false) return "已卸载"
+                                                if (page.selectedIsEnabled === false) return "已停用"
+                                                return page.selectedIsSystem ? "系统应用" : "第三方"
+                                            }
                                             font: FluTextStyle.Caption
-                                            color: page.selectedIsSystem ? "#94a3b8" : "#10b981"
+                                            color: {
+                                                if (page.selectedInstalledForCurrentUser === false) return "#ef4444"
+                                                if (page.selectedIsEnabled === false) return "#eab308"
+                                                return page.selectedIsSystem ? "#94a3b8" : "#10b981"
+                                            }
                                         }
                                     }
                                 }
@@ -1014,12 +1284,36 @@ FluContentPage {
                             columnSpacing: 6
                             rowSpacing: 6
 
+                            // 恢复 (仅针对已卸载应用)
+                            ActionButton {
+                                label: "恢复"
+                                icon: FluentIcons.UpdateRestore
+                                dense: true
+                                Layout.fillWidth: true
+                                accent: "#0f7b6c"
+                                visible: page.selectedInstalledForCurrentUser === false
+                                enabled: !!page.selectedPackage && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning
+                                onPressed: AppDetailControl.restoreApp(page.selectedPackage)
+                            }
+
+                            // 启用 (仅针对已停用应用)
+                            ActionButton {
+                                label: "启用"
+                                icon: FluentIcons.Play
+                                dense: true
+                                Layout.fillWidth: true
+                                accent: "#0f7b6c"
+                                visible: page.selectedIsEnabled === false && page.selectedInstalledForCurrentUser !== false
+                                enabled: !!page.selectedPackage && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning
+                                onPressed: AppDetailControl.enableApp(page.selectedPackage)
+                            }
+
                             ActionButton {
                                 label: "启动"
                                 icon: FluentIcons.Play
                                 dense: true
                                 Layout.fillWidth: true
-                                enabled: !!page.selectedPackage && !AppDetailControl.busy && !page.uninstallRunning
+                                enabled: !!page.selectedPackage && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning && page.selectedInstalledForCurrentUser !== false && page.selectedIsEnabled !== false
                                 onPressed: AppDetailControl.startApp(page.selectedPackage)
                             }
 
@@ -1028,7 +1322,7 @@ FluContentPage {
                                 icon: FluentIcons.Stop
                                 dense: true
                                 Layout.fillWidth: true
-                                enabled: !!page.selectedPackage && !AppDetailControl.busy && !page.uninstallRunning
+                                enabled: !!page.selectedPackage && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning && page.selectedInstalledForCurrentUser !== false
                                 onPressed: AppDetailControl.stopApp(page.selectedPackage)
                             }
 
@@ -1037,7 +1331,7 @@ FluContentPage {
                                 icon: FluentIcons.Download
                                 dense: true
                                 Layout.fillWidth: true
-                                enabled: !!page.selectedPackage && !AppDetailControl.busy && !page.uninstallRunning
+                                enabled: !!page.selectedPackage && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning
                                 onPressed: singleExtractDialog.open()
                             }
 
@@ -1046,7 +1340,7 @@ FluContentPage {
                                 icon: FluentIcons.Lock
                                 dense: true
                                 Layout.fillWidth: true
-                                enabled: !!page.selectedPackage && !AppDetailControl.busy && !page.uninstallRunning
+                                enabled: !!page.selectedPackage && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning && page.selectedInstalledForCurrentUser !== false
                                 onPressed: AppDetailControl.freezeApp(page.selectedPackage)
                             }
 
@@ -1055,7 +1349,7 @@ FluContentPage {
                                 dense: true
                                 Layout.fillWidth: true
                                 accent: "#ca8a04"
-                                enabled: !!page.selectedPackage && !AppDetailControl.busy && !page.uninstallRunning
+                                enabled: !!page.selectedPackage && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning && page.selectedInstalledForCurrentUser !== false
                                 onPressed: AppDetailControl.clearData(page.selectedPackage)
                             }
 
@@ -1065,7 +1359,7 @@ FluContentPage {
                                 dense: true
                                 Layout.fillWidth: true
                                 accent: "#d83b01"
-                                enabled: !!page.selectedPackage && !AppDetailControl.busy && !page.uninstallRunning
+                                enabled: !!page.selectedPackage && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning && page.selectedInstalledForCurrentUser !== false
                                 onPressed: AppDetailControl.uninstallApp(page.selectedPackage)
                             }
                         }
@@ -1165,7 +1459,7 @@ FluContentPage {
                     label: "清空选择"
                     dense: true
                     Layout.preferredWidth: 70
-                    visible: page.selectedCount > 0 && !page.uninstallRunning
+                    visible: page.selectedCount > 0 && !page.uninstallRunning && !page.restoreRunning
                     onPressed: page.deselectAll()
                 }
 
@@ -1177,7 +1471,7 @@ FluContentPage {
                     icon: FluentIcons.Play
                     dense: true
                     Layout.preferredWidth: 88
-                    enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.batchRunning
+                    enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning && !page.batchRunning
                     onPressed: page.startBatchAction("start")
                 }
 
@@ -1186,7 +1480,7 @@ FluContentPage {
                     icon: FluentIcons.Stop
                     dense: true
                     Layout.preferredWidth: 88
-                    enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.batchRunning
+                    enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning && !page.batchRunning
                     onPressed: page.startBatchAction("stop")
                 }
 
@@ -1195,7 +1489,7 @@ FluContentPage {
                     icon: FluentIcons.Download
                     dense: true
                     Layout.preferredWidth: 92
-                    enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.batchRunning
+                    enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning && !page.batchRunning
                     onPressed: batchExtractDialog.open()
                 }
 
@@ -1204,8 +1498,27 @@ FluContentPage {
                     icon: FluentIcons.Lock
                     dense: true
                     Layout.preferredWidth: 88
-                    enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.batchRunning
+                    enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning && !page.batchRunning
                     onPressed: page.startBatchAction("freeze")
+                }
+
+                ActionButton {
+                    label: "批量启用"
+                    icon: FluentIcons.Play
+                    dense: true
+                    Layout.preferredWidth: 88
+                    enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning && !page.batchRunning
+                    onPressed: page.startBatchAction("enable")
+                }
+
+                ActionButton {
+                    label: "批量恢复"
+                    icon: FluentIcons.UpdateRestore
+                    dense: true
+                    Layout.preferredWidth: 88
+                    accent: "#0f7b6c"
+                    enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning && !page.batchRunning
+                    onPressed: batchRestoreConfirmPopup.open()
                 }
 
                 ActionButton {
@@ -1213,7 +1526,7 @@ FluContentPage {
                     dense: true
                     Layout.preferredWidth: 80
                     accent: "#ca8a04"
-                    enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.batchRunning
+                    enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning && !page.batchRunning
                     onPressed: confirmBatchClearDataPopup.open()
                 }
 
@@ -1223,7 +1536,7 @@ FluContentPage {
                     dense: true
                     Layout.preferredWidth: 96
                     accent: "#d83b01"
-                    enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.batchRunning
+                    enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning && !page.batchRunning
                     onPressed: batchUninstallConfirmPopup.open()
                 }
             }
@@ -1713,6 +2026,381 @@ FluContentPage {
                     normalColor: "#0f7b6c"
                     onClicked: {
                         batchUninstallSummaryPopup.close()
+                    }
+                }
+            }
+        }
+    }
+
+    // 8. 批量恢复确认 Dialog (重点功能)
+    FluPopup {
+        id: batchRestoreConfirmPopup
+        width: 480
+        height: Math.min(520, page.height - 40)
+        modal: true
+        closePolicy: Popup.CloseOnEscape
+
+        readonly property var restoreList: page.getSelectedList()
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 18
+            spacing: 12
+
+            RowLayout {
+                spacing: 10
+                FluIcon {
+                    iconSource: FluentIcons.UpdateRestore
+                    iconSize: 24
+                    iconColor: "#0f7b6c"
+                }
+                FluText {
+                    text: "批量恢复确认"
+                    font: FluTextStyle.Title
+                }
+            }
+
+            FluText {
+                text: "确定要恢复以下选取的 " + batchRestoreConfirmPopup.restoreList.length + " 个应用程序吗？"
+                font: FluTextStyle.Body
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            // 即将恢复的应用清单
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                radius: 6
+                color: FluTheme.dark ? Qt.rgba(1, 1, 1, 0.04) : Qt.rgba(0, 0, 0, 0.03)
+                border.width: 1
+                border.color: FluTheme.dark ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(0, 0, 0, 0.10)
+
+                ListView {
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    clip: true
+                    model: batchRestoreConfirmPopup.restoreList
+                    ScrollBar.vertical: FluScrollBar {}
+
+                    delegate: Rectangle {
+                        width: ListView.view.width
+                        height: 38
+                        radius: 4
+                        color: "transparent"
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 8
+                            spacing: 8
+
+                            FluIcon {
+                                iconSource: FluentIcons.AppIconDefault
+                                iconSize: 14
+                                iconColor: "#0f7b6c"
+                            }
+
+                            FluText {
+                                text: modelData.appName || modelData.packageName
+                                font: FluTextStyle.Body
+                                elide: Text.ElideRight
+                                Layout.preferredWidth: 150
+                            }
+
+                            FluText {
+                                text: modelData.packageName
+                                font: FluTextStyle.Caption
+                                color: FluTheme.fontSecondaryColor
+                                elide: Text.ElideMiddle
+                                Layout.fillWidth: true
+                            }
+
+                            Rectangle {
+                                Layout.preferredWidth: 46
+                                Layout.preferredHeight: 18
+                                radius: 3
+                                color: Qt.rgba(0.06, 0.48, 0.42, 0.2)
+                                FluText {
+                                    anchors.centerIn: parent
+                                    text: "待恢复"
+                                    font: FluTextStyle.Caption
+                                    color: "#0f7b6c"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 底部操作按钮
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                Item { Layout.fillWidth: true }
+
+                FluButton {
+                    text: "取消"
+                    onClicked: batchRestoreConfirmPopup.close()
+                }
+
+                FluFilledButton {
+                    text: "确定恢复 (" + batchRestoreConfirmPopup.restoreList.length + ")"
+                    normalColor: "#0f7b6c"
+                    onClicked: page.startBatchRestore()
+                }
+            }
+        }
+    }
+
+    // 9. 批量恢复进度 Dialog (重点功能)
+    FluPopup {
+        id: batchRestoreProgressPopup
+        width: 440
+        height: 240
+        modal: true
+        closePolicy: Popup.NoAutoClose
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 14
+
+            RowLayout {
+                spacing: 12
+                FluProgressRing {
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    strokeWidth: 3
+                }
+                ColumnLayout {
+                    spacing: 2
+                    FluText {
+                        text: "正在批量恢复应用程序..."
+                        font: FluTextStyle.BodyStrong
+                    }
+                    FluText {
+                        text: "请保持设备连接，ADB 正在顺序执行恢复任务"
+                        font: FluTextStyle.Caption
+                        color: FluTheme.fontSecondaryColor
+                    }
+                }
+            }
+
+            // 进度信息
+            RowLayout {
+                Layout.fillWidth: true
+                FluText {
+                    text: "当前进度: " + (page.restoreIndex + 1) + " / " + Math.max(page.restoreTotal, 1) + " (" + Math.round((page.restoreIndex) / Math.max(page.restoreTotal, 1) * 100) + "%)"
+                    font: FluTextStyle.Body
+                    Layout.fillWidth: true
+                }
+            }
+
+            // 进度条
+            FluProgressBar {
+                Layout.fillWidth: true
+                strokeWidth: 6
+                indeterminate: false
+                value: page.restoreIndex / Math.max(page.restoreTotal, 1)
+            }
+
+            // 当前正在恢复的应用
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 34
+                radius: 6
+                color: FluTheme.dark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.04)
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    spacing: 6
+                    FluText {
+                        text: "正在恢复: "
+                        font: FluTextStyle.Caption
+                        color: FluTheme.fontSecondaryColor
+                    }
+                    FluText {
+                        text: (page.restoreCurrentName || "准备中") + " (" + (page.restoreCurrentPkg || "-") + ")"
+                        font: FluTextStyle.Caption
+                        elide: Text.ElideMiddle
+                        Layout.fillWidth: true
+                    }
+                }
+            }
+
+            Item { Layout.fillHeight: true }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Item { Layout.fillWidth: true }
+                FluButton {
+                    text: "中断剩余任务"
+                    onClicked: page.cancelBatchRestore()
+                }
+            }
+        }
+    }
+
+    // 10. 批量恢复完成摘要 Dialog (重点功能)
+    FluPopup {
+        id: batchRestoreSummaryPopup
+        width: 460
+        height: Math.min(420, page.height - 40)
+        modal: true
+        closePolicy: Popup.CloseOnEscape
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 12
+
+            RowLayout {
+                spacing: 10
+                FluIcon {
+                    iconSource: FluentIcons.CheckMark
+                    iconSize: 24
+                    iconColor: page.restoreFailList.length === 0 ? "#10b981" : "#ca8a04"
+                }
+                FluText {
+                    text: "批量恢复完成"
+                    font: FluTextStyle.Title
+                }
+            }
+
+            // 统计卡片
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 54
+                    radius: 6
+                    color: Qt.rgba(0.06, 0.48, 0.42, FluTheme.dark ? 0.25 : 0.12)
+                    border.width: 1
+                    border.color: Qt.rgba(0.06, 0.48, 0.42, 0.35)
+
+                    ColumnLayout {
+                        anchors.centerIn: parent
+                        spacing: 2
+                        FluText {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "成功恢复"
+                            font: FluTextStyle.Caption
+                            color: FluTheme.fontSecondaryColor
+                        }
+                        FluText {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: page.restoreSuccessList.length + " 个"
+                            font: FluTextStyle.BodyStrong
+                            color: "#10b981"
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 54
+                    radius: 6
+                    color: page.restoreFailList.length > 0
+                           ? Qt.rgba(0.85, 0.23, 0.0, FluTheme.dark ? 0.25 : 0.12)
+                           : (FluTheme.dark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.04))
+                    border.width: 1
+                    border.color: page.restoreFailList.length > 0 ? Qt.rgba(0.85, 0.23, 0.0, 0.35) : (FluTheme.dark ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(0, 0, 0, 0.10))
+
+                    ColumnLayout {
+                        anchors.centerIn: parent
+                        spacing: 2
+                        FluText {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "失败 / 跳过"
+                            font: FluTextStyle.Caption
+                            color: FluTheme.fontSecondaryColor
+                        }
+                        FluText {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: page.restoreFailList.length + " 个"
+                            font: FluTextStyle.BodyStrong
+                            color: page.restoreFailList.length > 0 ? "#ef4444" : FluTheme.fontSecondaryColor
+                        }
+                    }
+                }
+            }
+
+            // 失败列表（如果有）
+            FluText {
+                text: "失败应用列表："
+                font: FluTextStyle.Caption
+                color: FluTheme.fontSecondaryColor
+                visible: page.restoreFailList.length > 0
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                radius: 6
+                visible: page.restoreFailList.length > 0
+                color: FluTheme.dark ? Qt.rgba(1, 1, 1, 0.04) : Qt.rgba(0, 0, 0, 0.03)
+                border.width: 1
+                border.color: FluTheme.dark ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(0, 0, 0, 0.10)
+
+                ListView {
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    clip: true
+                    model: page.restoreFailList
+                    ScrollBar.vertical: FluScrollBar {}
+
+                    delegate: Rectangle {
+                        width: ListView.view.width
+                        height: 36
+                        radius: 4
+                        color: "transparent"
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 8
+                            spacing: 8
+
+                            FluText {
+                                text: modelData.appName || modelData.packageName
+                                font: FluTextStyle.Body
+                                elide: Text.ElideRight
+                                Layout.preferredWidth: 140
+                            }
+
+                            FluText {
+                                text: modelData.packageName
+                                font: FluTextStyle.Caption
+                                color: FluTheme.fontSecondaryColor
+                                elide: Text.ElideMiddle
+                                Layout.fillWidth: true
+                            }
+
+                            FluText {
+                                text: modelData.reason || "恢复失败"
+                                font: FluTextStyle.Caption
+                                color: "#ef4444"
+                            }
+                        }
+                    }
+                }
+            }
+
+            Item { Layout.fillHeight: true }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Item { Layout.fillWidth: true }
+                FluFilledButton {
+                    text: "完成"
+                    normalColor: "#0f7b6c"
+                    onClicked: {
+                        batchRestoreSummaryPopup.close()
                     }
                 }
             }

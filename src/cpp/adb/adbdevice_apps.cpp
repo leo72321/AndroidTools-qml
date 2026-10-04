@@ -7,16 +7,74 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QDateTime>
+#include <QSet>
 
 namespace ADT {
 
 QList<AppDetailInfo> ADBDevice::getSoftListInfo(SoftListType type) const
 {
+    if (type == SoftListType::UninstalledSystem) {
+        QStringList argsAll;
+        argsAll << "-s" << code() << "shell" << "pm" << "list" << "packages" << "-s" << "-u";
+        QString outAll = m_adbTools->executeCommand(ADBTools::ADB, argsAll, "", INT_MAX);
+
+        QStringList argsInstalled;
+        argsInstalled << "-s" << code() << "shell" << "pm" << "list" << "packages" << "-s";
+        QString outInstalled = m_adbTools->executeCommand(ADBTools::ADB, argsInstalled, "", INT_MAX);
+
+        QSet<QString> installedPkgs;
+        for (const QString &line : outInstalled.split('\n')) {
+            QString pkg = line.trimmed();
+            if (pkg.startsWith("package:")) {
+                pkg = pkg.mid(8).trimmed();
+            }
+            if (!pkg.isEmpty()) {
+                installedPkgs.insert(pkg);
+            }
+        }
+
+        QSet<QString> seen;
+        QList<AppDetailInfo> appList;
+        for (const QString &line : outAll.split('\n')) {
+            QString pkg = line.trimmed();
+            if (pkg.startsWith("package:")) {
+                pkg = pkg.mid(8).trimmed();
+            }
+            if (!pkg.isEmpty() && !installedPkgs.contains(pkg) && !seen.contains(pkg)) {
+                seen.insert(pkg);
+                AppDetailInfo info;
+                info.packageName = pkg;
+                info.appName = pkg;
+                info.isSystemApp = true;
+                info.installedForCurrentUser = false;
+                info.isEnabled = false;
+                appList.append(info);
+            }
+        }
+        return appList;
+    }
+
     QUrl url("http://localhost:18888/apps");
     if (type == SoftListType::ThirdParty) {
         url.setQuery(QUrlQuery("isUser=true"));
     } else if (type == SoftListType::System) {
         url.setQuery(QUrlQuery("isSystem=true"));
+    }
+
+    QSet<QString> disabledPkgs;
+    if (type == SoftListType::Disabled) {
+        QStringList disabledArgs;
+        disabledArgs << "-s" << code() << "shell" << "pm" << "list" << "packages" << "-d";
+        QString disabledOut = m_adbTools->executeCommand(ADBTools::ADB, disabledArgs, "", INT_MAX);
+        for (const QString &line : disabledOut.split('\n')) {
+            QString pkg = line.trimmed();
+            if (pkg.startsWith("package:")) {
+                pkg = pkg.mid(8).trimmed();
+            }
+            if (!pkg.isEmpty()) {
+                disabledPkgs.insert(pkg);
+            }
+        }
     }
 
     auto ret = syncCallNetGetMethod(url);
@@ -27,6 +85,7 @@ QList<AppDetailInfo> ADBDevice::getSoftListInfo(SoftListType type) const
     }
     QJsonArray jsonArray = jsonDoc.array();
     QList<AppDetailInfo> appList;
+    QSet<QString> processedPkgs;
     for (const QJsonValue &value : jsonArray) {
         if (value.isObject()) {
             QJsonObject obj = value.toObject();
@@ -34,15 +93,51 @@ QList<AppDetailInfo> ADBDevice::getSoftListInfo(SoftListType type) const
             info.packageName = obj.value("packageName").toString();
             info.appName = obj.value("appName").toString();
             info.versionName = obj.value("versionName").toString();
-            info.versionCode = obj.value("versionCode").toInt();
+            info.versionCode = obj.value("versionCode").toVariant().toULongLong();
             info.isSystemApp = obj.value("isSystemApp").toBool();
             info.isEnabled = obj.value("isEnabled").toBool();
+            info.installedForCurrentUser = true;
             info.firstInstallTime = QDateTime::fromMSecsSinceEpoch(obj.value("firstInstallTime").toVariant().toLongLong()).toString("yyyy-MM-dd hh:mm:ss");
             info.lastUpdateTime = QDateTime::fromMSecsSinceEpoch(obj.value("lastUpdateTime").toVariant().toLongLong()).toString("yyyy-MM-dd hh:mm:ss");
             info.iconBase64 = "";
+
+            if (disabledPkgs.contains(info.packageName)) {
+                info.isEnabled = false;
+            }
+
+            // 依據 SoftListType 進行二次過濾
+            if (type == SoftListType::ThirdParty) {
+                if (info.isSystemApp) {
+                    continue;
+                }
+            } else if (type == SoftListType::System) {
+                if (!info.isSystemApp) {
+                    continue;
+                }
+            } else if (type == SoftListType::Disabled) {
+                if (info.isEnabled && !disabledPkgs.contains(info.packageName)) {
+                    continue;
+                }
+            }
+
+            processedPkgs.insert(info.packageName);
             appList.append(info);
         }
     }
+
+    if (type == SoftListType::Disabled) {
+        for (const QString &pkg : disabledPkgs) {
+            if (!processedPkgs.contains(pkg)) {
+                AppDetailInfo info;
+                info.packageName = pkg;
+                info.appName = pkg;
+                info.isEnabled = false;
+                info.installedForCurrentUser = true;
+                appList.append(info);
+            }
+        }
+    }
+
     return appList;
 }
 
@@ -123,6 +218,76 @@ bool ADBDevice::unfreezeApp(const QString &packageName)
     args << "-s" << code() << "shell" << "pm" << "enable" << packageName;
     QString result = m_adbTools->executeCommand(ADBTools::ADB, args, "", INT_MAX);
     return !result.contains("Error");
+}
+
+bool ADBDevice::enableApp(const QString &packageName)
+{
+    QString userId = getCurrentUserId();
+    QStringList args;
+    args << "-s" << code() << "shell" << "pm" << "enable" << "--user" << userId << packageName;
+    CommandResult result = m_adbTools->executeCommandDetailed(ADBTools::ADB, args, "", INT_MAX);
+
+    if (!result.isSuccess() || result.getAllOutput().contains("Error", Qt::CaseInsensitive) || result.getAllOutput().contains("Unknown option", Qt::CaseInsensitive)) {
+        QStringList fallbackArgs;
+        fallbackArgs << "-s" << code() << "shell" << "pm" << "enable" << packageName;
+        CommandResult fallbackResult = m_adbTools->executeCommandDetailed(ADBTools::ADB, fallbackArgs, "", INT_MAX);
+        return fallbackResult.isSuccess() && !fallbackResult.getAllOutput().contains("Error", Qt::CaseInsensitive);
+    }
+
+    return true;
+}
+
+bool ADBDevice::restoreApp(const QString &packageName)
+{
+    QString userId = getCurrentUserId();
+
+    // 1. 优先执行 adb shell cmd package install-existing --user <userId> <pkg>
+    QStringList cmdArgs;
+    cmdArgs << "-s" << code() << "shell" << "cmd" << "package" << "install-existing" << "--user" << userId << packageName;
+    CommandResult cmdRes = m_adbTools->executeCommandDetailed(ADBTools::ADB, cmdArgs, "", INT_MAX);
+    if (cmdRes.getAllOutput().contains("installed", Qt::CaseInsensitive)) {
+        return true;
+    }
+
+    // 2. Fallback 至 pm install-existing --user <userId> <pkg>
+    QStringList pmUserArgs;
+    pmUserArgs << "-s" << code() << "shell" << "pm" << "install-existing" << "--user" << userId << packageName;
+    CommandResult pmUserRes = m_adbTools->executeCommandDetailed(ADBTools::ADB, pmUserArgs, "", INT_MAX);
+    if (pmUserRes.getAllOutput().contains("installed", Qt::CaseInsensitive)) {
+        return true;
+    }
+
+    // 3. Fallback 至 pm install-existing <pkg>
+    QStringList pmArgs;
+    pmArgs << "-s" << code() << "shell" << "pm" << "install-existing" << packageName;
+    CommandResult pmRes = m_adbTools->executeCommandDetailed(ADBTools::ADB, pmArgs, "", INT_MAX);
+    if (pmRes.getAllOutput().contains("installed", Qt::CaseInsensitive)) {
+        return true;
+    }
+
+    return false;
+}
+
+QString ADBDevice::getCurrentUserId() const
+{
+    QStringList args;
+    args << "-s" << code() << "shell" << "cmd" << "user" << "get-main-user";
+    QString out = m_adbTools->executeCommand(ADBTools::ADB, args).trimmed();
+    bool ok = false;
+    int uid = out.toInt(&ok);
+    if (ok && uid >= 0) {
+        return QString::number(uid);
+    }
+
+    args.clear();
+    args << "-s" << code() << "shell" << "am" << "get-current-user";
+    out = m_adbTools->executeCommand(ADBTools::ADB, args).trimmed();
+    uid = out.toInt(&ok);
+    if (ok && uid >= 0) {
+        return QString::number(uid);
+    }
+
+    return "0";
 }
 
 bool ADBDevice::extractApp(const QString &packageName, const QString &targetPath)

@@ -20,7 +20,8 @@ enum SoftListModelRole {
     AppMinSdkRole,
     AppIdRole,
     AppPathRole,
-    AppIconRole
+    AppIconRole,
+    AppInstalledForCurrentUserRole
 };
 
 class SoftListModel : public QAbstractListModel

@@ -35,6 +35,8 @@ public:
     Q_INVOKABLE void uninstallApp(const QString &packageName);
     Q_INVOKABLE void freezeApp(const QString &packageName);
     Q_INVOKABLE void unfreezeApp(const QString &packageName);
+    Q_INVOKABLE void enableApp(const QString &packageName);
+    Q_INVOKABLE void restoreApp(const QString &packageName);
     Q_INVOKABLE void extractApp(const QString &packageName, const QString &targetPath);
     Q_INVOKABLE void stopApp(const QString &packageName);
 

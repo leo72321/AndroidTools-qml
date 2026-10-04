@@ -60,7 +60,9 @@ Q_ENUM_NS(ChargingType)
 enum SoftListType {
     ThirdParty,
     System,
-    All
+    All,
+    Disabled = 3,
+    UninstalledSystem = 4
 };
 Q_ENUM_NS(SoftListType)
 
@@ -265,6 +267,12 @@ public:
     bool freezeApp(const QString &packageName);
     // 解冻应用
     bool unfreezeApp(const QString &packageName);
+    // 启用应用
+    bool enableApp(const QString &packageName);
+    // 恢复应用
+    bool restoreApp(const QString &packageName);
+    // 获取当前用户ID
+    QString getCurrentUserId() const;
     // 导出应用
     bool extractApp(const QString &packageName, const QString &targetPath);
     // 停止运行

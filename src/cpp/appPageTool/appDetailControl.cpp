@@ -138,6 +138,36 @@ void AppDetailControl::unfreezeApp(const QString &packageName)
     });
 }
 
+void AppDetailControl::enableApp(const QString &packageName)
+{
+    const auto device = CONNECTMANAGER->selectedADBDevice();
+    if (!beginOperation(device)) return;
+    asyncOperator([packageName, device, this](){
+        if (!device->enableApp(packageName)) {
+            NotificationController::instance()->send("启用失败", packageName, NotificationController::Error);
+        } else {
+            NotificationController::instance()->send("启用成功", packageName, NotificationController::Info);
+            Q_EMIT requestUpdateSoftList();
+        }
+        finishOperation();
+    });
+}
+
+void AppDetailControl::restoreApp(const QString &packageName)
+{
+    const auto device = CONNECTMANAGER->selectedADBDevice();
+    if (!beginOperation(device)) return;
+    asyncOperator([packageName, device, this](){
+        if (!device->restoreApp(packageName)) {
+            NotificationController::instance()->send("恢复失败", packageName, NotificationController::Error);
+        } else {
+            NotificationController::instance()->send("恢复成功", packageName, NotificationController::Info);
+            Q_EMIT requestUpdateSoftList();
+        }
+        finishOperation();
+    });
+}
+
 void AppDetailControl::extractApp(const QString &packageName, const QString &targetPath)
 {
     const auto device = CONNECTMANAGER->selectedADBDevice();

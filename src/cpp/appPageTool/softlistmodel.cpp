@@ -51,6 +51,8 @@ QVariant SoftListModel::data(const QModelIndex &index, int role) const
         return info.path;
     case AppIconRole:
         return info.iconBase64;
+    case AppInstalledForCurrentUserRole:
+        return info.installedForCurrentUser;
 
     default:
         return QVariant();
@@ -104,6 +106,7 @@ QHash<int, QByteArray> SoftListModel::roleNames() const
     roles[AppIdRole] = "appId";
     roles[AppPathRole] = "path";
     roles[AppIconRole] = "icon";
+    roles[AppInstalledForCurrentUserRole] = "installedForCurrentUser";
     return roles;
 }
 

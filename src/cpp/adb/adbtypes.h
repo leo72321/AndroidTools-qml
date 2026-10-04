@@ -64,6 +64,7 @@ struct AppDetailInfo {
     quint64 versionCode;
     bool isSystemApp;
     bool isEnabled;
+    bool installedForCurrentUser = true;
     QString firstInstallTime;
     QString lastUpdateTime;
     QString targetsdk;
