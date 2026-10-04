@@ -179,6 +179,8 @@ ADBDevice::ADBDevice(const QString &code, QObject *parent)
 
 ADBDevice::~ADBDevice()
 {
+    stopAndroidService();
+
     if (m_worker) {
         disconnect(m_worker, nullptr, this, nullptr);
         if (m_workerThread && m_workerThread->isRunning() && QThread::currentThread() != m_workerThread) {
@@ -265,6 +267,17 @@ bool ADBDevice::startAndroidService()
     m_serverPro->start(adbCmd, {"-s", code(), "shell", "CLASSPATH=/data/local/tmp/androidtools-server.dex app_process / com.mhduiy.androidtoolsserver.SystemInfoServer 18888"});
     m_serverPro->waitForStarted(3000);
     return true;
+}
+
+void ADBDevice::stopAndroidService()
+{
+    if (m_serverPro && m_serverPro->state() != QProcess::NotRunning) {
+        m_serverPro->terminate();
+        if (!m_serverPro->waitForFinished(1000)) {
+            m_serverPro->kill();
+            m_serverPro->waitForFinished(500);
+        }
+    }
 }
 
 void ADBDevice::initWorker()

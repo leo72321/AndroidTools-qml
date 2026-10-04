@@ -44,8 +44,8 @@ FluContentPage {
     property real storagePct: SystemInfo.storageTotal > 0 ? Math.round(SystemInfo.storageUsed / SystemInfo.storageTotal * 100) : 0
     property real batteryTemp: device ? device.batteryTemperature : 0
     property var devices: DeviceHelper.adbDeviceList
-    property string connectionTitle: ConnectManager.adbServerStarting ? "ADB 服务启动中" : (page.device ? ((page.device.manufacturer || "") + " " + (page.device.model || page.device.code || "Android 设备")) : "等待设备连接")
-    property string connectionHint: page.device ? ((page.device.currentPackage || "未读取前台应用") + "  /  " + (page.device.code || "-")) : (ConnectManager.adbStateMessage + "；可使用 USB 或无线连接")
+    property string connectionTitle: ConnectManager.adbServerStarting ? "ADB 服務啟動中" : (page.device ? ((page.device.manufacturer || "") + " " + (page.device.model || page.device.code || "Android 裝置")) : "等待裝置連線")
+    property string connectionHint: page.device ? ((page.device.currentPackage || "未讀取前景應用程式") + "  /  " + (page.device.code || "-")) : (ConnectManager.adbStateMessage + "；可使用 USB 或無線連線")
 
     Timer {
         id: initTimer
@@ -101,11 +101,11 @@ FluContentPage {
 
     function installApk(path) {
         if (!page.device) {
-            NotificationController.send("安装失败", "请先连接设备", NotificationController.Warning)
+            NotificationController.send("安裝失敗", "請先連線裝置", NotificationController.Warning)
             return
         }
         if (!path || !String(path).toLowerCase().endsWith(".apk")) {
-            NotificationController.send("无法安装", "请拖入 APK 文件", NotificationController.Warning)
+            NotificationController.send("無法安裝", "請拖入 APK 檔案", NotificationController.Warning)
             return
         }
         page.workbenchIndex = 3
@@ -177,26 +177,26 @@ FluContentPage {
     function chargingText(type) {
         if (type === ADT.AC) return "AC"
         if (type === ADT.USB) return "USB"
-        if (type === ADT.Wireless) return "无线"
+        if (type === ADT.Wireless) return "無線"
         if (type === ADT.Dock) return "Dock"
-        return "未充电"
+        return "未充電"
     }
 
     function batteryStatusText(status) {
-        if (status === 2) return "充电中"
-        if (status === 3) return "放电"
-        if (status === 4) return "未充电"
-        if (status === 5) return "已充满"
+        if (status === 2) return "充電中"
+        if (status === 3) return "放電"
+        if (status === 4) return "未充電"
+        if (status === 5) return "已充飽"
         return status > 0 ? String(status) : "--"
     }
 
     function batteryHealthText(health) {
         if (health === 2) return "良好"
-        if (health === 3) return "过热"
-        if (health === 4) return "损坏"
-        if (health === 5) return "过压"
+        if (health === 3) return "過熱"
+        if (health === 4) return "損壞"
+        if (health === 5) return "過壓"
         if (health === 6) return "故障"
-        if (health === 7) return "过冷"
+        if (health === 7) return "過冷"
         return health > 0 ? String(health) : "--"
     }
 
@@ -272,13 +272,13 @@ FluContentPage {
         background: Panel {}
         contentItem: ColumnLayout {
             spacing: 10
-            Header { title: "无线 ADB"; subtitle: "Android 11+ 可使用配对码" }
+            Header { title: "無線 ADB"; subtitle: "Android 11+ 可使用配對碼" }
             RowLayout {
                 Layout.fillWidth: true
-                FluTextBox { id: pairAddress; placeholderText: "配对地址，例如 192.168.1.20:37123"; Layout.fillWidth: true }
-                FluTextBox { id: pairCode; placeholderText: "配对码"; Layout.preferredWidth: 100 }
+                FluTextBox { id: pairAddress; placeholderText: "配對位址，例如 192.168.1.20:37123"; Layout.fillWidth: true }
+                FluTextBox { id: pairCode; placeholderText: "配對碼"; Layout.preferredWidth: 100 }
                 ActionButton {
-                    label: ConnectManager.wirelessOperationRunning ? "配对中" : "配对"
+                    label: ConnectManager.wirelessOperationRunning ? "配對中" : "配對"
                     dense: true
                     Layout.preferredWidth: 76
                     enabled: !ConnectManager.wirelessOperationRunning
@@ -288,9 +288,9 @@ FluContentPage {
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: FluTheme.dividerColor }
             RowLayout {
                 Layout.fillWidth: true
-                FluTextBox { id: connectAddress; placeholderText: "连接地址，例如 192.168.1.20:5555"; Layout.fillWidth: true }
+                FluTextBox { id: connectAddress; placeholderText: "連線位址，例如 192.168.1.20:5555"; Layout.fillWidth: true }
                 ActionButton {
-                    label: ConnectManager.wirelessOperationRunning ? "连接中" : "连接"
+                    label: ConnectManager.wirelessOperationRunning ? "連線中" : "連線"
                     icon: FluentIcons.Connect
                     dense: true
                     Layout.preferredWidth: 92
@@ -300,7 +300,7 @@ FluContentPage {
                 }
             }
             Item { Layout.fillHeight: true }
-            FluText { text: "手机和电脑需位于同一局域网"; font: FluTextStyle.Caption; color: FluTheme.fontSecondaryColor }
+            FluText { text: "手機和電腦需位於同一區域網路"; font: FluTextStyle.Caption; color: FluTheme.fontSecondaryColor }
         }
     }
 
@@ -395,10 +395,10 @@ FluContentPage {
                                 if (selected) ConnectManager.requestSetCutADBDevice(selected.code)
                             }
                         }
-                        ActionButton { label: "无线"; icon: FluentIcons.Wifi; dense: true; Layout.preferredWidth: 76; onPressed: wirelessPopup.open() }
-                        ActionButton { label: ConnectManager.refreshInProgress ? "刷新中" : "刷新"; icon: FluentIcons.Refresh; dense: true; Layout.preferredWidth: 82; enabled: !ConnectManager.refreshInProgress; onPressed: ConnectManager.startCheckDevice() }
-                        ActionButton { label: page.mirrorActive ? "停止投屏" : "投屏"; icon: FluentIcons.Video; dense: true; Layout.preferredWidth: 96; enabled: !!page.device; accent: "#0f7b6c"; onPressed: page.toggleMirror() }
-                        ActionButton { label: "截图"; icon: FluentIcons.Camera; dense: true; Layout.preferredWidth: 76; enabled: !!page.device; visible: page.width >= 1080; onPressed: ImageDetailTools.shotScreen("") }
+                        ActionButton { label: "無線"; icon: FluentIcons.Wifi; dense: true; Layout.preferredWidth: 76; onPressed: wirelessPopup.open() }
+                        ActionButton { label: ConnectManager.refreshInProgress ? "重新整理中" : "重新整理"; icon: FluentIcons.Refresh; dense: true; Layout.preferredWidth: 82; enabled: !ConnectManager.refreshInProgress; onPressed: ConnectManager.startCheckDevice() }
+                        ActionButton { label: page.mirrorActive ? "停止鏡像" : "螢幕鏡像"; icon: FluentIcons.Video; dense: true; Layout.preferredWidth: 96; enabled: !!page.device; accent: "#0f7b6c"; onPressed: page.toggleMirror() }
+                        ActionButton { label: "截圖"; icon: FluentIcons.Camera; dense: true; Layout.preferredWidth: 76; enabled: !!page.device; visible: page.width >= 1080; onPressed: ImageDetailTools.shotScreen("") }
                     }
                 }
             }
@@ -417,7 +417,7 @@ FluContentPage {
                         anchors { fill: parent; margins: 10 }
                         spacing: 7
 
-                        Header { title: "设备档案"; subtitle: page.device ? (page.device.brand || page.device.deviceName || "") : "未连接" }
+                        Header { title: "裝置檔案"; subtitle: page.device ? (page.device.brand || page.device.deviceName || "") : "未連線" }
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -433,9 +433,9 @@ FluContentPage {
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0
                                 spacing: 6
-                                MetricLine { name: "电量"; value: page.device ? page.device.batteryLevel + "%" : "--"; percent: page.device ? page.device.batteryLevel : 0; accent: page.batteryColor(page.device ? page.device.batteryLevel : 0) }
-                                MetricLine { name: "温度"; value: page.batteryTemp.toFixed(1) + "C"; percent: Math.min(100, Math.max(0, (page.batteryTemp - 20) * 2)); accent: page.batteryTemp > 44 ? "#d83b01" : "#0f7b6c" }
-                                MetricLine { name: "电压"; value: page.device ? (page.device.batteryVoltage / 1000.0).toFixed(2) + "V" : "--"; percent: page.device ? Math.min(100, page.device.batteryVoltage / 50) : 0; accent: "#2563eb" }
+                                MetricLine { name: "電量"; value: page.device ? page.device.batteryLevel + "%" : "--"; percent: page.device ? page.device.batteryLevel : 0; accent: page.batteryColor(page.device ? page.device.batteryLevel : 0) }
+                                MetricLine { name: "溫度"; value: page.batteryTemp.toFixed(1) + "C"; percent: Math.min(100, Math.max(0, (page.batteryTemp - 20) * 2)); accent: page.batteryTemp > 44 ? "#d83b01" : "#0f7b6c" }
+                                MetricLine { name: "電壓"; value: page.device ? (page.device.batteryVoltage / 1000.0).toFixed(2) + "V" : "--"; percent: page.device ? Math.min(100, page.device.batteryVoltage / 50) : 0; accent: "#2563eb" }
                             }
                         }
 
@@ -444,20 +444,20 @@ FluContentPage {
                             columns: 2
                             columnSpacing: 6
                             rowSpacing: 6
-                            DataTile { label: "系统"; value: page.device ? "Android " + (page.device.androidVersion || "-") : "-"; sub: page.device ? "SDK " + (page.device.sdkVersion || "-") : ""; accent: "#2563eb" }
-                            DataTile { label: "屏幕"; value: page.device ? (page.device.resolution || "-") : "-"; sub: page.device ? (page.device.dpi || "-") + " DPI" : ""; accent: "#7c3aed" }
+                            DataTile { label: "系統"; value: page.device ? "Android " + (page.device.androidVersion || "-") : "-"; sub: page.device ? "SDK " + (page.device.sdkVersion || "-") : ""; accent: "#2563eb" }
+                            DataTile { label: "螢幕"; value: page.device ? (page.device.resolution || "-") : "-"; sub: page.device ? (page.device.dpi || "-") + " DPI" : ""; accent: "#7c3aed" }
                             DataTile { label: "CPU"; value: page.device ? (page.device.maxCoreNum || "-") + " 核" : "-"; sub: page.device ? (page.device.maxFreq || "-") : ""; accent: "#0f7b6c" }
-                            DataTile { label: "内存"; value: page.device ? (page.device.memory || "--") : "--"; sub: SystemInfo.ramTotal > 0 ? SystemInfo.ramTotal.toFixed(1) + " GB runtime" : ""; accent: "#64748b" }
-                            DataTile { label: "电池"; value: page.device ? page.chargingText(page.device.chargingType) : "--"; sub: page.device ? page.batteryStatusText(page.device.batteryStatus) + " / " + page.batteryHealthText(page.device.batteryHealth) : ""; accent: page.batteryColor(page.device ? page.device.batteryLevel : 0) }
-                            DataTile { label: "电流"; value: page.device ? page.device.batteryCurrent + " mA" : "--"; sub: SystemInfo.batteryTechnology || "scale " + (page.device ? page.device.batteryScale : "--"); accent: "#ca8a04" }
+                            DataTile { label: "記憶體"; value: page.device ? (page.device.memory || "--") : "--"; sub: SystemInfo.ramTotal > 0 ? SystemInfo.ramTotal.toFixed(1) + " GB runtime" : ""; accent: "#64748b" }
+                            DataTile { label: "電池"; value: page.device ? page.chargingText(page.device.chargingType) : "--"; sub: page.device ? page.batteryStatusText(page.device.batteryStatus) + " / " + page.batteryHealthText(page.device.batteryHealth) : ""; accent: page.batteryColor(page.device ? page.device.batteryLevel : 0) }
+                            DataTile { label: "電流"; value: page.device ? page.device.batteryCurrent + " mA" : "--"; sub: SystemInfo.batteryTechnology || "scale " + (page.device ? page.device.batteryScale : "--"); accent: "#ca8a04" }
                             DataTile { label: "IP"; value: page.device ? (page.device.ipAddr || "未知") : "-"; sub: page.device ? (page.device.macAddr || "MAC --") : ""; accent: "#2563eb" }
-                            DataTile { label: "代号"; value: page.device ? (page.device.deviceCode || "-") : "-"; sub: page.device ? (page.device.serialNumber || "-") : ""; accent: "#64748b" }
+                            DataTile { label: "代號"; value: page.device ? (page.device.deviceCode || "-") : "-"; sub: page.device ? (page.device.serialNumber || "-") : ""; accent: "#64748b" }
                         }
 
                         Item { Layout.fillHeight: true }
 
                         ActionButton {
-                            label: "重启到 Fastboot"
+                            label: "重新啟動至 Fastboot"
                             icon: FluentIcons.DeveloperTools
                             enabled: !!page.device
                             Layout.fillWidth: true
@@ -478,7 +478,7 @@ FluContentPage {
 
                         RowLayout {
                             Layout.fillWidth: true
-                            Header { title: "投屏舞台"; subtitle: page.mirrorActive ? "实时画面" : "待启动"; Layout.fillWidth: true }
+                            Header { title: "鏡像舞台"; subtitle: page.mirrorActive ? "即時畫面" : "待啟動"; Layout.fillWidth: true }
                             ActionButton { label: "放大"; icon: FluentIcons.FullScreen; dense: true; Layout.preferredWidth: 72; enabled: !!page.device; onPressed: mirrorPopup.open() }
                         }
 
@@ -527,8 +527,8 @@ FluContentPage {
                                         anchors.centerIn: parent
                                         spacing: 8
                                         FluIcon { iconSource: FluentIcons.CellPhone; iconSize: 34; iconColor: "#64748b"; Layout.alignment: Qt.AlignHCenter }
-                                        FluText { text: page.device ? "投屏未启动" : "未连接设备"; color: "#94a3b8"; font: FluTextStyle.BodyStrong; Layout.alignment: Qt.AlignHCenter }
-                                        FluText { text: page.device ? "顶部按钮可启动投屏" : "连接后显示完整画面"; color: "#64748b"; font: FluTextStyle.Caption; Layout.alignment: Qt.AlignHCenter }
+                                        FluText { text: page.device ? "螢幕鏡像未啟動" : "未連線裝置"; color: "#94a3b8"; font: FluTextStyle.BodyStrong; Layout.alignment: Qt.AlignHCenter }
+                                        FluText { text: page.device ? "頂端按鈕可啟動螢幕鏡像" : "連線後顯示完整畫面"; color: "#64748b"; font: FluTextStyle.Caption; Layout.alignment: Qt.AlignHCenter }
                                     }
                                 }
                             }
@@ -545,14 +545,14 @@ FluContentPage {
                                     columns: 2
                                     columnSpacing: 6
                                     rowSpacing: 6
-                                    IconKey { label: "主页"; icon: FluentIcons.Home; enabled: !!page.device; onPressed: DeviceControl.control(ADT.Key, ADT.Home) }
+                                    IconKey { label: "主頁"; icon: FluentIcons.Home; enabled: !!page.device; onPressed: DeviceControl.control(ADT.Key, ADT.Home) }
                                     IconKey { label: "返回"; icon: FluentIcons.Back; enabled: !!page.device; onPressed: DeviceControl.control(ADT.Key, ADT.Back) }
-                                    IconKey { label: "电源"; icon: FluentIcons.PowerButton; enabled: !!page.device; accent: "#ca8a04"; onPressed: DeviceControl.control(ADT.Key, ADT.Power) }
-                                    IconKey { label: "菜单"; icon: FluentIcons.GlobalNavButton; enabled: !!page.device; onPressed: DeviceControl.control(ADT.Key, ADT.Menu) }
+                                    IconKey { label: "電源"; icon: FluentIcons.PowerButton; enabled: !!page.device; accent: "#ca8a04"; onPressed: DeviceControl.control(ADT.Key, ADT.Power) }
+                                    IconKey { label: "選單"; icon: FluentIcons.GlobalNavButton; enabled: !!page.device; onPressed: DeviceControl.control(ADT.Key, ADT.Menu) }
                                     IconKey { label: "音量+"; icon: FluentIcons.Volume; enabled: !!page.device; onPressed: DeviceControl.control(ADT.Music, ADT.VolumeAdd) }
                                     IconKey { label: "音量-"; icon: FluentIcons.Volume; enabled: !!page.device; onPressed: DeviceControl.control(ADT.Music, ADT.VolumeReduce) }
-                                    IconKey { label: "静音"; icon: FluentIcons.Mute; enabled: !!page.device; onPressed: DeviceControl.control(ADT.Key, ADT.Mute) }
-                                    IconKey { label: "重启"; icon: FluentIcons.Refresh; enabled: !!page.device; accent: "#d83b01"; onPressed: DeviceControl.control(ADT.Key, ADT.Reboot) }
+                                    IconKey { label: "靜音"; icon: FluentIcons.Mute; enabled: !!page.device; onPressed: DeviceControl.control(ADT.Key, ADT.Mute) }
+                                    IconKey { label: "重新啟動"; icon: FluentIcons.Refresh; enabled: !!page.device; accent: "#d83b01"; onPressed: DeviceControl.control(ADT.Key, ADT.Reboot) }
                                 }
 
                                 Rectangle {
@@ -571,7 +571,7 @@ FluContentPage {
                                             columns: 1
                                             rowSpacing: 4
                                             ActionButton {
-                                                label: "省电"
+                                                label: "省電"
                                                 icon: FluentIcons.QuietHours
                                                 dense: true
                                                 Layout.fillWidth: true
@@ -622,7 +622,7 @@ FluContentPage {
                         anchors { fill: parent; margins: 10 }
                         spacing: 7
 
-                        Header { title: "实时状态"; subtitle: SystemInfo.polling ? "采集中" : "等待数据" }
+                        Header { title: "即時狀態"; subtitle: SystemInfo.polling ? "擷取中" : "等待資料" }
 
                         GridLayout {
                             Layout.fillWidth: true
@@ -632,13 +632,13 @@ FluContentPage {
                             MiniGauge { label: "CPU 使用率"; value: SystemInfo.cpuUsage; valueText: SystemInfo.polling ? Math.round(SystemInfo.cpuUsage) + "%" : "--"; accent: "#0f7b6c" }
                             MiniGauge { label: "GPU 使用率"; value: SystemInfo.gpuUsage; valueText: SystemInfo.polling ? Math.round(SystemInfo.gpuUsage) + "%" : "--"; accent: "#2563eb" }
                             MiniGauge { label: "RAM 使用率"; value: page.ramPct; valueText: SystemInfo.ramTotal > 0 ? page.ramPct + "%" : "--"; accent: "#7c3aed" }
-                            MiniGauge { label: "CPU 温度"; value: Math.min(100, Math.max(0, SystemInfo.cpuTemp)); valueText: SystemInfo.polling ? SystemInfo.cpuTemp.toFixed(1) + "C" : "--"; accent: SystemInfo.cpuTemp > 70 ? "#d83b01" : "#ca8a04" }
+                            MiniGauge { label: "CPU 溫度"; value: Math.min(100, Math.max(0, SystemInfo.cpuTemp)); valueText: SystemInfo.polling ? SystemInfo.cpuTemp.toFixed(1) + "C" : "--"; accent: SystemInfo.cpuTemp > 70 ? "#d83b01" : "#ca8a04" }
                         }
 
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 8
-                            Header { title: "趋势"; subtitle: ""; Layout.fillWidth: true }
+                            Header { title: "趨勢"; subtitle: ""; Layout.fillWidth: true }
                             FluText { text: SystemInfo.fps > 0 ? SystemInfo.fps + " FPS" : "-- FPS"; font: FluTextStyle.Caption; color: FluTheme.fontSecondaryColor }
                         }
 
@@ -664,11 +664,11 @@ FluContentPage {
                             columnSpacing: 6
                             rowSpacing: 6
                             CompactTile { label: "RAM"; value: SystemInfo.ramTotal > 0 ? SystemInfo.ramUsage.toFixed(1) + "/" + SystemInfo.ramTotal.toFixed(1) + "GB" : "--"; accent: "#7c3aed" }
-                            CompactTile { label: "存储"; value: SystemInfo.storageTotal > 0 ? SystemInfo.storageUsed.toFixed(0) + "/" + SystemInfo.storageTotal.toFixed(0) + "GB" : "--"; accent: page.storagePct > 85 ? "#d83b01" : "#2563eb" }
-                            CompactTile { label: "前台"; value: SystemInfo.foregroundPackage || (page.device && page.device.currentPackage ? page.device.currentPackage : "--"); accent: "#0f7b6c" }
+                            CompactTile { label: "儲存空間"; value: SystemInfo.storageTotal > 0 ? SystemInfo.storageUsed.toFixed(0) + "/" + SystemInfo.storageTotal.toFixed(0) + "GB" : "--"; accent: page.storagePct > 85 ? "#d83b01" : "#2563eb" }
+                            CompactTile { label: "前景"; value: SystemInfo.foregroundPackage || (page.device && page.device.currentPackage ? page.device.currentPackage : "--"); accent: "#0f7b6c" }
                             CompactTile { label: "Activity"; value: SystemInfo.foregroundActivity || (page.device && page.device.currentActivity ? page.device.currentActivity : "--"); accent: "#0f7b6c" }
-                            CompactTile { label: "进程"; value: SystemInfo.foregroundPid > 0 ? "PID " + SystemInfo.foregroundPid + " / " + SystemInfo.foregroundMemoryMB.toFixed(0) + "MB" : "--"; accent: "#64748b" }
-                            CompactTile { label: "投屏"; value: page.mirrorActive ? "运行中" : "未启动"; accent: page.mirrorActive ? "#0f7b6c" : "#64748b" }
+                            CompactTile { label: "處理程序"; value: SystemInfo.foregroundPid > 0 ? "PID " + SystemInfo.foregroundPid + " / " + SystemInfo.foregroundMemoryMB.toFixed(0) + "MB" : "--"; accent: "#64748b" }
+                            CompactTile { label: "螢幕鏡像"; value: page.mirrorActive ? "執行中" : "未啟動"; accent: page.mirrorActive ? "#0f7b6c" : "#64748b" }
                         }
                     }
                 }
@@ -688,10 +688,10 @@ FluContentPage {
                         spacing: 6
                         WorkbenchTab { label: "控制"; icon: FluentIcons.Permissions; tabIndex: 0; currentIndex: page.workbenchIndex; onActivated: function(index) { page.workbenchIndex = index } }
                         WorkbenchTab { label: "快捷"; icon: FluentIcons.FavoriteStar; tabIndex: 1; currentIndex: page.workbenchIndex; accent: "#2563eb"; onActivated: function(index) { page.workbenchIndex = index } }
-                        WorkbenchTab { label: "文件"; icon: FluentIcons.Document; tabIndex: 2; currentIndex: page.workbenchIndex; accent: "#2563eb"; onActivated: function(index) { page.workbenchIndex = index } }
-                        WorkbenchTab { label: "应用"; icon: FluentIcons.AllApps; tabIndex: 3; currentIndex: page.workbenchIndex; accent: "#0f7b6c"; onActivated: function(index) { page.workbenchIndex = index } }
-                        WorkbenchTab { label: "刷机"; icon: FluentIcons.DeveloperTools; tabIndex: 4; currentIndex: page.workbenchIndex; accent: "#ca8a04"; onActivated: function(index) { page.workbenchIndex = index } }
-                        WorkbenchTab { label: "日志"; icon: FluentIcons.ReportDocument; tabIndex: 5; currentIndex: page.workbenchIndex; accent: "#64748b"; onActivated: function(index) { page.workbenchIndex = index } }
+                        WorkbenchTab { label: "檔案"; icon: FluentIcons.Document; tabIndex: 2; currentIndex: page.workbenchIndex; accent: "#2563eb"; onActivated: function(index) { page.workbenchIndex = index } }
+                        WorkbenchTab { label: "應用程式"; icon: FluentIcons.AllApps; tabIndex: 3; currentIndex: page.workbenchIndex; accent: "#0f7b6c"; onActivated: function(index) { page.workbenchIndex = index } }
+                        WorkbenchTab { label: "刷機"; icon: FluentIcons.DeveloperTools; tabIndex: 4; currentIndex: page.workbenchIndex; accent: "#ca8a04"; onActivated: function(index) { page.workbenchIndex = index } }
+                        WorkbenchTab { label: "記錄"; icon: FluentIcons.ReportDocument; tabIndex: 5; currentIndex: page.workbenchIndex; accent: "#64748b"; onActivated: function(index) { page.workbenchIndex = index } }
                     }
 
                     StackLayout {
@@ -709,7 +709,7 @@ FluContentPage {
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 7
-                                    Header { title: "媒体"; subtitle: "播放与音量" }
+                                    Header { title: "媒體"; subtitle: "播放與音量" }
                                     GridLayout {
                                         Layout.fillWidth: true
                                         columns: 2
@@ -717,9 +717,9 @@ FluContentPage {
                                         rowSpacing: 6
                                         Repeater {
                                             model: [
-                                                { t: "上一曲", v: ADT.PreviousSong },
+                                                { t: "上一首", v: ADT.PreviousSong },
                                                 { t: "播放", v: ADT.PlayAndPause },
-                                                { t: "下一曲", v: ADT.NextSong },
+                                                { t: "下一首", v: ADT.NextSong },
                                                 { t: "停止", v: ADT.StopPlay },
                                                 { t: "音量-", v: ADT.VolumeReduce },
                                                 { t: "音量+", v: ADT.VolumeAdd }
@@ -732,39 +732,39 @@ FluContentPage {
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 7
-                                    Header { title: "电池伪装"; subtitle: "调试场景" }
+                                    Header { title: "電池偽裝"; subtitle: "除錯情境" }
                                     RowLayout {
                                         Layout.fillWidth: true
-                                        FluTextBox { id: batteryLevelInput; text: "100"; placeholderText: "电量"; Layout.fillWidth: true }
-                                        ActionButton { label: "设置"; dense: true; Layout.preferredWidth: 70; enabled: !!page.device; onPressed: BatteryDisguise.setBatteryLevel(parseInt(batteryLevelInput.text) || 100) }
+                                        FluTextBox { id: batteryLevelInput; text: "100"; placeholderText: "電量"; Layout.fillWidth: true }
+                                        ActionButton { label: "設定"; dense: true; Layout.preferredWidth: 70; enabled: !!page.device; onPressed: BatteryDisguise.setBatteryLevel(parseInt(batteryLevelInput.text) || 100) }
                                     }
                                     GridLayout {
                                         Layout.fillWidth: true
                                         columns: 2
                                         columnSpacing: 6
                                         rowSpacing: 6
-                                        ActionButton { label: "停止充电"; dense: true; Layout.fillWidth: true; enabled: !!page.device; onPressed: BatteryDisguise.stopCharge() }
-                                        ActionButton { label: "USB不充电"; dense: true; Layout.fillWidth: true; enabled: !!page.device; onPressed: BatteryDisguise.connectButNoCharge() }
-                                        ActionButton { label: "恢复充电"; dense: true; Layout.fillWidth: true; enabled: !!page.device; onPressed: BatteryDisguise.restoreCharge() }
-                                        ActionButton { label: "全部重置"; dense: true; Layout.fillWidth: true; enabled: !!page.device; accent: "#d83b01"; onPressed: BatteryDisguise.restoreAll() }
+                                        ActionButton { label: "停止充電"; dense: true; Layout.fillWidth: true; enabled: !!page.device; onPressed: BatteryDisguise.stopCharge() }
+                                        ActionButton { label: "USB不充電"; dense: true; Layout.fillWidth: true; enabled: !!page.device; onPressed: BatteryDisguise.connectButNoCharge() }
+                                        ActionButton { label: "恢復充電"; dense: true; Layout.fillWidth: true; enabled: !!page.device; onPressed: BatteryDisguise.restoreCharge() }
+                                        ActionButton { label: "全部重設"; dense: true; Layout.fillWidth: true; enabled: !!page.device; accent: "#d83b01"; onPressed: BatteryDisguise.restoreAll() }
                                     }
                                 }
 
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 7
-                                    Header { title: "分辨率 / DPI"; subtitle: page.device ? page.device.resolution + " / " + page.device.dpi : "" }
+                                    Header { title: "解析度 / DPI"; subtitle: page.device ? page.device.resolution + " / " + page.device.dpi : "" }
                                     GridLayout {
                                         Layout.fillWidth: true
                                         columns: 3
                                         columnSpacing: 6
                                         rowSpacing: 6
-                                        FluTextBox { id: resW; text: page.resolutionPart(0, "1080"); placeholderText: "宽"; Layout.fillWidth: true }
+                                        FluTextBox { id: resW; text: page.resolutionPart(0, "1080"); placeholderText: "寬"; Layout.fillWidth: true }
                                         FluTextBox { id: resH; text: page.resolutionPart(1, "1920"); placeholderText: "高"; Layout.fillWidth: true }
                                         FluTextBox { id: resDpi; text: page.device ? (page.device.dpi || "420") : "420"; placeholderText: "DPI"; Layout.fillWidth: true }
-                                        ActionButton { label: "恢复"; dense: true; Layout.fillWidth: true; enabled: !!page.device; onPressed: ResolutionControl.restore() }
+                                        ActionButton { label: "恢復"; dense: true; Layout.fillWidth: true; enabled: !!page.device; onPressed: ResolutionControl.restore() }
                                         ActionButton {
-                                            label: "应用"
+                                            label: "套用"
                                             dense: true
                                             Layout.fillWidth: true
                                             Layout.columnSpan: 2
@@ -788,13 +788,13 @@ FluContentPage {
                                 columnSpacing: 8
                                 rowSpacing: 8
 
-                                ActionCard { title: "文件推送"; subtitle: "选择文件并传到 /sdcard"; icon: FluentIcons.Document; onPressed: page.openTool(2) }
-                                ActionCard { title: "键盘输入"; subtitle: "发送按键与文本"; icon: FluentIcons.KeyboardClassic; onPressed: page.openTool(2) }
-                                ActionCard { title: "应用管理"; subtitle: "安装、启动、卸载"; icon: FluentIcons.AllApps; onPressed: page.openTool(3) }
-                                ActionCard { title: "刷机维护"; subtitle: "Fastboot 与镜像"; icon: FluentIcons.DeveloperTools; accent: "#ca8a04"; onPressed: page.openTool(4) }
-                                ActionCard { title: "实时日志"; subtitle: "ADB logcat"; icon: FluentIcons.ReportDocument; onPressed: page.openTool(5) }
-                                ActionCard { title: "截图"; subtitle: "保存当前屏幕"; icon: FluentIcons.Camera; enabled: !!page.device; onPressed: ImageDetailTools.shotScreen("") }
-                                ActionCard { title: "重启设备"; subtitle: "系统重启"; icon: FluentIcons.Refresh; accent: "#d83b01"; enabled: !!page.device; onPressed: DeviceControl.control(ADT.Key, ADT.Reboot) }
+                                ActionCard { title: "檔案推送"; subtitle: "選取檔案並傳送到 /sdcard"; icon: FluentIcons.Document; onPressed: page.openTool(2) }
+                                ActionCard { title: "鍵盤輸入"; subtitle: "傳送按鍵與文字"; icon: FluentIcons.KeyboardClassic; onPressed: page.openTool(2) }
+                                ActionCard { title: "應用程式管理"; subtitle: "安裝、啟動、解除安裝"; icon: FluentIcons.AllApps; onPressed: page.openTool(3) }
+                                ActionCard { title: "刷機維護"; subtitle: "Fastboot 與映像檔"; icon: FluentIcons.DeveloperTools; accent: "#ca8a04"; onPressed: page.openTool(4) }
+                                ActionCard { title: "即時記錄"; subtitle: "ADB logcat"; icon: FluentIcons.ReportDocument; onPressed: page.openTool(5) }
+                                ActionCard { title: "截圖"; subtitle: "儲存目前畫面"; icon: FluentIcons.Camera; enabled: !!page.device; onPressed: ImageDetailTools.shotScreen("") }
+                                ActionCard { title: "重新啟動裝置"; subtitle: "系統重新啟動"; icon: FluentIcons.Refresh; accent: "#d83b01"; enabled: !!page.device; onPressed: DeviceControl.control(ADT.Key, ADT.Reboot) }
                             }
                         }
 
@@ -807,15 +807,15 @@ FluContentPage {
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 7
-                                    Header { title: "文件传输"; subtitle: "推送到设备" }
+                                    Header { title: "檔案傳輸"; subtitle: "推送到裝置" }
                                     RowLayout {
                                         Layout.fillWidth: true
-                                        FluTextBox { text: page.transferLocalPath; placeholderText: "本地文件"; Layout.fillWidth: true; onTextChanged: page.transferLocalPath = text }
-                                        ActionButton { label: "浏览"; dense: true; Layout.preferredWidth: 70; onPressed: fileDialog.open() }
+                                        FluTextBox { text: page.transferLocalPath; placeholderText: "本機檔案"; Layout.fillWidth: true; onTextChanged: page.transferLocalPath = text }
+                                        ActionButton { label: "瀏覽"; dense: true; Layout.preferredWidth: 70; onPressed: fileDialog.open() }
                                     }
                                     RowLayout {
                                         Layout.fillWidth: true
-                                        FluTextBox { id: remotePath; text: "/sdcard/"; placeholderText: "设备路径"; Layout.fillWidth: true }
+                                        FluTextBox { id: remotePath; text: "/sdcard/"; placeholderText: "裝置路徑"; Layout.fillWidth: true }
                                         ActionButton { label: "推送"; dense: true; Layout.preferredWidth: 70; enabled: !!page.device; onPressed: FileTransfer.transmission(page.transferLocalPath, remotePath.text) }
                                     }
                                 }
@@ -823,14 +823,14 @@ FluContentPage {
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 7
-                                    Header { title: "输入 / Activity"; subtitle: "轻量调试" }
+                                    Header { title: "輸入 / Activity"; subtitle: "輕量除錯" }
                                     Rectangle {
                                         Layout.fillWidth: true
                                         Layout.preferredHeight: 34
                                         radius: 7
                                         color: keyboardArea.activeFocus ? Qt.rgba(0.06, 0.48, 0.42, 0.14) : (FluTheme.dark ? Qt.rgba(1,1,1,0.055) : Qt.rgba(0,0,0,0.035))
                                         border.color: keyboardArea.activeFocus ? "#0f7b6c" : FluTheme.dividerColor
-                                        FluText { anchors.centerIn: parent; text: keyboardArea.activeFocus ? "键盘输入监听中" : "点击发送键盘输入"; color: FluTheme.fontSecondaryColor }
+                                        FluText { anchors.centerIn: parent; text: keyboardArea.activeFocus ? "鍵盤輸入監聽中" : "按一下傳送鍵盤輸入"; color: FluTheme.fontSecondaryColor }
                                         MouseArea {
                                             id: keyboardArea
                                             anchors.fill: parent
@@ -842,7 +842,7 @@ FluContentPage {
                                     RowLayout {
                                         Layout.fillWidth: true
                                         FluTextBox { id: activityName; text: "com.tencent.mm/.ui.LauncherUI"; placeholderText: "Activity"; Layout.fillWidth: true }
-                                        ActionButton { label: "启动"; dense: true; Layout.preferredWidth: 70; enabled: !!page.device; onPressed: StartActivity.start(activityName.text, "") }
+                                        ActionButton { label: "啟動"; dense: true; Layout.preferredWidth: 70; enabled: !!page.device; onPressed: StartActivity.start(activityName.text, "") }
                                     }
                                 }
                             }
@@ -876,11 +876,11 @@ FluContentPage {
                                     spacing: 4
 
                                     FluText {
-                                        text: "应用管理已升级为独立应用中心"
+                                        text: "應用程式管理已升級為獨立應用中心"
                                         font: FluTextStyle.BodyStrong
                                     }
                                     FluText {
-                                        text: "支持名称与包名即时搜索、全选/反选多选、批量启停、APK 提取及带有进度跟踪的批量卸载完整功能。"
+                                        text: "支援名稱與套件名稱即時搜尋、全選/反向選取多選、批次啟停、APK 擷取及帶有進度追蹤的批次解除安裝完整功能。"
                                         font: FluTextStyle.Caption
                                         color: FluTheme.fontSecondaryColor
                                         wrapMode: Text.WordWrap
@@ -891,7 +891,7 @@ FluContentPage {
                                 RowLayout {
                                     spacing: 8
                                     ActionButton {
-                                        label: AppDetailControl.busy ? "处理中" : "安装 APK"
+                                        label: AppDetailControl.busy ? "處理中" : "安裝 APK"
                                         icon: FluentIcons.Add
                                         dense: true
                                         Layout.preferredWidth: 104
@@ -899,11 +899,11 @@ FluContentPage {
                                         onPressed: apkDialog.open()
                                     }
                                     ActionButton {
-                                        label: "打开应用管理"
+                                        label: "開啟應用程式管理"
                                         icon: FluentIcons.Apps
                                         dense: true
                                         accent: "#0f7b6c"
-                                        Layout.preferredWidth: 120
+                                        Layout.preferredWidth: 130
                                         onPressed: {
                                             if (typeof navView !== "undefined" && navView) {
                                                 navView.setCurrentIndex(1)
@@ -925,21 +925,21 @@ FluContentPage {
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 7
-                                    Header { title: "Fastboot"; subtitle: FastBootDeviceManager.currentDeviceCode || "无设备" }
-                                    ActionButton { label: "刷新设备"; dense: true; Layout.fillWidth: true; onPressed: FastBootDeviceManager.updateDevices() }
-                                    ActionButton { label: "重启到系统"; dense: true; Layout.fillWidth: true; enabled: !!FastBootDeviceManager.currentDeviceCode; onPressed: FastBootDeviceManager.rebootToSystem("") }
-                                    ActionButton { label: "关机"; dense: true; Layout.fillWidth: true; enabled: !!FastBootDeviceManager.currentDeviceCode; accent: "#d83b01"; onPressed: FastBootDeviceManager.powerOff("") }
+                                    Header { title: "Fastboot"; subtitle: FastBootDeviceManager.currentDeviceCode || "無裝置" }
+                                    ActionButton { label: "重新整理裝置"; dense: true; Layout.fillWidth: true; onPressed: FastBootDeviceManager.updateDevices() }
+                                    ActionButton { label: "重新啟動到系統"; dense: true; Layout.fillWidth: true; enabled: !!FastBootDeviceManager.currentDeviceCode; onPressed: FastBootDeviceManager.rebootToSystem("") }
+                                    ActionButton { label: "關機"; dense: true; Layout.fillWidth: true; enabled: !!FastBootDeviceManager.currentDeviceCode; accent: "#d83b01"; onPressed: FastBootDeviceManager.powerOff("") }
                                 }
 
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 7
-                                    Header { title: "临时启动 / 刷入"; subtitle: "镜像文件" }
+                                    Header { title: "臨時啟動 / 刷入"; subtitle: "映像檔" }
                                     RowLayout { Layout.fillWidth: true; FluTextBox { text: page.fastbootImagePath; placeholderText: "boot.img / image.img"; Layout.fillWidth: true; onTextChanged: page.fastbootImagePath = text } ActionButton { label: "..."; dense: true; Layout.preferredWidth: 44; onPressed: imageDialog.open() } }
-                                    RowLayout { Layout.fillWidth: true; FluTextBox { id: partitionName; text: "boot"; placeholderText: "分区"; Layout.fillWidth: true } }
+                                    RowLayout { Layout.fillWidth: true; FluTextBox { id: partitionName; text: "boot"; placeholderText: "分割區"; Layout.fillWidth: true } }
                                     RowLayout {
                                         Layout.fillWidth: true
-                                        ActionButton { label: "临时启动"; dense: true; Layout.fillWidth: true; enabled: !!FastBootDeviceManager.currentDeviceCode; onPressed: FlashTools.startBoot(page.fastbootImagePath) }
+                                        ActionButton { label: "臨時啟動"; dense: true; Layout.fillWidth: true; enabled: !!FastBootDeviceManager.currentDeviceCode; onPressed: FlashTools.startBoot(page.fastbootImagePath) }
                                         ActionButton { label: "刷入"; dense: true; Layout.fillWidth: true; enabled: !!FastBootDeviceManager.currentDeviceCode; accent: "#ca8a04"; onPressed: FlashTools.flash(partitionName.text, page.fastbootImagePath) }
                                     }
                                 }
@@ -947,8 +947,8 @@ FluContentPage {
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 7
-                                    Header { title: "维护"; subtitle: "危险操作" }
-                                    RowLayout { Layout.fillWidth: true; FluTextBox { id: erasePart; text: "cache"; placeholderText: "分区"; Layout.fillWidth: true } ActionButton { label: "擦除"; dense: true; Layout.preferredWidth: 70; enabled: !!FastBootDeviceManager.currentDeviceCode; accent: "#d83b01"; onPressed: FlashTools.clear(erasePart.text) } }
+                                    Header { title: "維護"; subtitle: "危險操作" }
+                                    RowLayout { Layout.fillWidth: true; FluTextBox { id: erasePart; text: "cache"; placeholderText: "分割區"; Layout.fillWidth: true } ActionButton { label: "抹除"; dense: true; Layout.preferredWidth: 70; enabled: !!FastBootDeviceManager.currentDeviceCode; accent: "#d83b01"; onPressed: FlashTools.clear(erasePart.text) } }
                                 }
                             }
                         }
@@ -959,7 +959,7 @@ FluContentPage {
                                 spacing: 6
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Header { title: "ADB 错误记录"; subtitle: ADBLog.rowCount() + " 条"; Layout.fillWidth: true }
+                                    Header { title: "ADB 錯誤紀錄"; subtitle: ADBLog.rowCount() + " 條"; Layout.fillWidth: true }
                                     ActionButton { label: "清空"; dense: true; Layout.preferredWidth: 64; enabled: ADBLog.rowCount() > 0; onPressed: ADBLog.clear() }
                                 }
                                 ListView {
@@ -1004,7 +1004,7 @@ FluContentPage {
                     return
                 }
             }
-            NotificationController.send("无法安装", "请拖入 APK 文件", NotificationController.Warning)
+            NotificationController.send("無法安裝", "請拖入 APK 檔案", NotificationController.Warning)
         }
 
         Rectangle {
@@ -1017,13 +1017,13 @@ FluContentPage {
             ColumnLayout {
                 anchors.centerIn: parent
                 FluIcon { iconSource: FluentIcons.Download; iconSize: 42; iconColor: "#0f7b6c"; Layout.alignment: Qt.AlignHCenter }
-                FluText { text: "释放以安装 APK"; font: FluTextStyle.Subtitle; Layout.alignment: Qt.AlignHCenter }
+                FluText { text: "放開以安裝 APK"; font: FluTextStyle.Subtitle; Layout.alignment: Qt.AlignHCenter }
             }
         }
     }
 
-    FileDialog { id: fileDialog; title: "选择文件"; fileMode: FileDialog.OpenFile; onAccepted: page.transferLocalPath = page.localPath(currentFile) }
-    FileDialog { id: apkDialog; title: "选择 APK"; nameFilters: ["APK files (*.apk)"]; onAccepted: page.installApk(page.localPath(currentFile)) }
-    FileDialog { id: imageDialog; title: "选择镜像"; onAccepted: page.fastbootImagePath = page.localPath(currentFile) }
-    FolderDialog { id: extractDialog; title: "选择 APK 保存目录"; onAccepted: AppDetailControl.extractApp(page.selectedPackage, page.localPath(selectedFolder)) }
+    FileDialog { id: fileDialog; title: "選取檔案"; fileMode: FileDialog.OpenFile; onAccepted: page.transferLocalPath = page.localPath(currentFile) }
+    FileDialog { id: apkDialog; title: "選取 APK"; nameFilters: ["APK files (*.apk)"]; onAccepted: page.installApk(page.localPath(currentFile)) }
+    FileDialog { id: imageDialog; title: "選取映像檔"; onAccepted: page.fastbootImagePath = page.localPath(currentFile) }
+    FolderDialog { id: extractDialog; title: "選取 APK 儲存目錄"; onAccepted: AppDetailControl.extractApp(page.selectedPackage, page.localPath(selectedFolder)) }
 }

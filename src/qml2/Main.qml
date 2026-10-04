@@ -76,19 +76,19 @@ FluWindow {
 
         items: FluObject {
             FluPaneItem {
-                title: "控制台"
+                title: "主控台"
                 icon: FluentIcons.Home
                 url: "qrc:/qml2/pages/HomePage.qml"
                 onTap: { navView.push(url) }
             }
             FluPaneItem {
-                title: "应用"
+                title: "應用程式"
                 icon: FluentIcons.Apps
                 url: "qrc:/qml2/pages/AppPage.qml"
                 onTap: { navView.push(url) }
             }
             FluPaneItem {
-                title: "性能"
+                title: "效能"
                 icon: FluentIcons.SpeedHigh
                 url: "qrc:/qml2/pages/PerformancePage.qml"
                 onTap: { navView.push(url) }
@@ -97,7 +97,7 @@ FluWindow {
 
         footerItems: FluObject {
             FluPaneItem {
-                title: "设置"
+                title: "設定"
                 icon: FluentIcons.Settings
                 url: "qrc:/qml2/pages/SettingPage.qml"
                 onTap: { navView.push(url) }

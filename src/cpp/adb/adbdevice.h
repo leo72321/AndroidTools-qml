@@ -156,6 +156,7 @@ public:
     ~ADBDevice();
 
     bool startAndroidService();
+    void stopAndroidService();
 
     // === 设备详细信息访问器 ===
     QString manufacturer() const;

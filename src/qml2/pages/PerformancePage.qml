@@ -89,14 +89,14 @@ FluContentPage {
                         Layout.fillWidth: true
                         spacing: 2
                         FluText {
-                            text: "性能监控"
+                            text: "效能監控"
                             font.pixelSize: 18
                             font.bold: true
                             color: FluTheme.fontPrimaryColor
                         }
                         FluText {
-                            text: (device ? (device.brand + " " + device.model + " / " + (device.serialNumber || device.deviceCode || "-")) : "未连接设备")
-                                  + "    前台 " + page.textOrDash(page.selectedPackage)
+                            text: (device ? (device.brand + " " + device.model + " / " + (device.serialNumber || device.deviceCode || "-")) : "未連線裝置")
+                                  + "    前景 " + page.textOrDash(page.selectedPackage)
                             font: FluTextStyle.Caption
                             color: FluTheme.fontSecondaryColor
                             elide: Text.ElideRight
@@ -116,12 +116,12 @@ FluContentPage {
                             anchors.centerIn: parent
                             spacing: 5
                             Rectangle { Layout.preferredWidth: 7; Layout.preferredHeight: 7; radius: 4; color: page.recording ? "#0f7b6c" : "#64748b" }
-                            FluText { text: page.recording ? "采集中" : "已暂停"; font: FluTextStyle.Caption }
+                            FluText { text: page.recording ? "擷取中" : "已暫停"; font: FluTextStyle.Caption }
                         }
                     }
 
                     FluButton {
-                        text: page.recording ? "暂停" : "开始"
+                        text: page.recording ? "暫停" : "開始"
                         Layout.preferredWidth: 74
                         onClicked: page.recording = !page.recording
                     }
@@ -141,12 +141,12 @@ FluContentPage {
                 columnSpacing: 8
                 rowSpacing: 8
 
-                PerfMetricCard { label: "FPS"; value: SystemInfo.fps > 0 ? String(SystemInfo.fps) : "--"; unit: "fps"; detail: "目标 60 / 样本 " + page.sampleCount; level: page.fpsPct; accent: "#d83b01" }
-                PerfMetricCard { label: "CPU"; value: Math.round(SystemInfo.cpuUsage) + "%"; detail: SystemInfo.cpuCoreCount > 0 ? SystemInfo.cpuCoreCount + " 核 / " + SystemInfo.cpuMaxFrequency + " MHz" : "等待 CPU 数据"; level: SystemInfo.cpuUsage; accent: "#0f7b6c" }
+                PerfMetricCard { label: "FPS"; value: SystemInfo.fps > 0 ? String(SystemInfo.fps) : "--"; unit: "fps"; detail: "目標 60 / 樣本 " + page.sampleCount; level: page.fpsPct; accent: "#d83b01" }
+                PerfMetricCard { label: "CPU"; value: Math.round(SystemInfo.cpuUsage) + "%"; detail: SystemInfo.cpuCoreCount > 0 ? SystemInfo.cpuCoreCount + " 核 / " + SystemInfo.cpuMaxFrequency + " MHz" : "等待 CPU 資料"; level: SystemInfo.cpuUsage; accent: "#0f7b6c" }
                 PerfMetricCard { label: "GPU"; value: Math.round(SystemInfo.gpuUsage) + "%"; detail: page.textOrDash(SystemInfo.gpuName) + " / " + SystemInfo.gpuCurrentFrequency + " MHz"; level: SystemInfo.gpuUsage; accent: "#2563eb" }
                 PerfMetricCard { label: "RAM"; value: page.ramPct + "%"; detail: page.formatGb(SystemInfo.ramUsage) + " / " + page.formatGb(SystemInfo.ramTotal); level: page.ramPct; accent: "#7c3aed" }
-                PerfMetricCard { label: "温度"; value: SystemInfo.cpuTemp > 0 ? SystemInfo.cpuTemp.toFixed(1) : "--"; unit: "C"; detail: "GPU " + (SystemInfo.gpuTemperature >= 0 ? SystemInfo.gpuTemperature + "C" : "--"); level: page.tempPct; accent: "#ca8a04" }
-                PerfMetricCard { label: "电池"; value: device ? device.batteryLevel + "%" : "--"; detail: device ? (device.batteryVoltage / 1000.0).toFixed(2) + "V / " + device.batteryCurrent + " mA" : page.textOrDash(SystemInfo.batteryTechnology); level: device ? device.batteryLevel : 0; accent: "#64748b" }
+                PerfMetricCard { label: "溫度"; value: SystemInfo.cpuTemp > 0 ? SystemInfo.cpuTemp.toFixed(1) : "--"; unit: "C"; detail: "GPU " + (SystemInfo.gpuTemperature >= 0 ? SystemInfo.gpuTemperature + "C" : "--"); level: page.tempPct; accent: "#ca8a04" }
+                PerfMetricCard { label: "電池"; value: device ? device.batteryLevel + "%" : "--"; detail: device ? (device.batteryVoltage / 1000.0).toFixed(2) + "V / " + device.batteryCurrent + " mA" : page.textOrDash(SystemInfo.batteryTechnology); level: device ? device.batteryLevel : 0; accent: "#64748b" }
             }
 
             RowLayout {
@@ -166,7 +166,7 @@ FluContentPage {
 
                         RowLayout {
                             Layout.fillWidth: true
-                            Header { title: "实时曲线"; subtitle: "FPS / CPU / GPU / RAM / TEMP"; Layout.fillWidth: true }
+                            Header { title: "即時曲線"; subtitle: "FPS / CPU / GPU / RAM / TEMP"; Layout.fillWidth: true }
                             LegendPill { label: "FPS"; value: ""; accent: "#d83b01" }
                             LegendPill { label: "CPU"; value: ""; accent: "#0f7b6c" }
                             LegendPill { label: "GPU"; value: ""; accent: "#2563eb" }
@@ -190,7 +190,7 @@ FluContentPage {
                         anchors { fill: parent; margins: 12 }
                         spacing: 8
 
-                        Header { title: "前台应用"; subtitle: SystemInfo.foregroundPid > 0 ? "PID " + SystemInfo.foregroundPid : "等待数据" }
+                        Header { title: "前景應用程式"; subtitle: SystemInfo.foregroundPid > 0 ? "PID " + SystemInfo.foregroundPid : "等待資料" }
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -218,10 +218,10 @@ FluContentPage {
                             rowSpacing: 6
                             CompactTile { label: "版本"; value: page.textOrDash(SystemInfo.foregroundVersion); accent: "#2563eb" }
                             CompactTile { label: "UID"; value: SystemInfo.foregroundUid > 0 ? String(SystemInfo.foregroundUid) : "--"; accent: "#64748b" }
-                            CompactTile { label: "进程"; value: SystemInfo.foregroundPid > 0 ? String(SystemInfo.foregroundPid) : "--"; accent: "#0f7b6c" }
-                            CompactTile { label: "内存"; value: SystemInfo.foregroundMemoryMB > 0 ? SystemInfo.foregroundMemoryMB.toFixed(0) + " MB" : "--"; accent: "#7c3aed" }
+                            CompactTile { label: "處理程序"; value: SystemInfo.foregroundPid > 0 ? String(SystemInfo.foregroundPid) : "--"; accent: "#0f7b6c" }
+                            CompactTile { label: "記憶體"; value: SystemInfo.foregroundMemoryMB > 0 ? SystemInfo.foregroundMemoryMB.toFixed(0) + " MB" : "--"; accent: "#7c3aed" }
                             CompactTile { label: "CPU"; value: SystemInfo.foregroundCpuUsage > 0 ? SystemInfo.foregroundCpuUsage.toFixed(1) + "%" : "--"; accent: "#0f7b6c" }
-                            CompactTile { label: "刷新"; value: (page.sampleInterval / 1000).toFixed(1) + "s"; accent: "#ca8a04" }
+                            CompactTile { label: "重新整理"; value: (page.sampleInterval / 1000).toFixed(1) + "s"; accent: "#ca8a04" }
                         }
 
                         Rectangle {
@@ -235,9 +235,9 @@ FluContentPage {
                             ColumnLayout {
                                 anchors { fill: parent; margins: 10 }
                                 spacing: 6
-                                FluText { text: "采样说明"; font: FluTextStyle.BodyStrong }
+                                FluText { text: "取樣說明"; font: FluTextStyle.BodyStrong }
                                 FluText {
-                                    text: "当前版本复用 AndroidToolsServer 已有接口。FPS、进程 CPU、应用内存字段已经预留，后续补 /sample 和 framestats 后可直接接入。"
+                                    text: "目前版本沿用 AndroidToolsServer 現有介面。FPS、處理程序 CPU、應用程式記憶體欄位已預留，後續補 /sample 與 framestats 後可直接整合。"
                                     font: FluTextStyle.Caption
                                     color: FluTheme.fontSecondaryColor
                                     wrapMode: Text.WordWrap
@@ -263,20 +263,20 @@ FluContentPage {
                     ColumnLayout {
                         anchors { fill: parent; margins: 12 }
                         spacing: 8
-                        Header { title: "硬件概览"; subtitle: page.textOrDash(SystemInfo.cpuModel) }
+                        Header { title: "硬體概覽"; subtitle: page.textOrDash(SystemInfo.cpuModel) }
                         GridLayout {
                             Layout.fillWidth: true
                             columns: 4
                             columnSpacing: 6
                             rowSpacing: 6
                             CompactTile { label: "CPU"; value: page.textOrDash(SystemInfo.cpuArchitecture); accent: "#0f7b6c" }
-                            CompactTile { label: "频率"; value: SystemInfo.cpuMinFrequency + "-" + SystemInfo.cpuMaxFrequency + " MHz"; accent: "#0f7b6c" }
+                            CompactTile { label: "時脈"; value: SystemInfo.cpuMinFrequency + "-" + SystemInfo.cpuMaxFrequency + " MHz"; accent: "#0f7b6c" }
                             CompactTile { label: "GPU"; value: page.textOrDash(SystemInfo.gpuVendor); accent: "#2563eb" }
-                            CompactTile { label: "存储"; value: SystemInfo.storageTotal > 0 ? SystemInfo.storageUsed.toFixed(0) + "/" + SystemInfo.storageTotal.toFixed(0) + " GB" : "--"; accent: "#2563eb" }
-                            CompactTile { label: "可用内存"; value: page.formatGb(SystemInfo.memAvailable); accent: "#7c3aed" }
-                            CompactTile { label: "低内存"; value: SystemInfo.lowMemory ? "是" : "否"; accent: SystemInfo.lowMemory ? "#d83b01" : "#64748b" }
-                            CompactTile { label: "电池技术"; value: page.textOrDash(SystemInfo.batteryTechnology); accent: "#ca8a04" }
-                            CompactTile { label: "投屏"; value: Resource.mirror > 0 ? "运行中" : "未启动"; accent: Resource.mirror > 0 ? "#0f7b6c" : "#64748b" }
+                            CompactTile { label: "儲存空間"; value: SystemInfo.storageTotal > 0 ? SystemInfo.storageUsed.toFixed(0) + "/" + SystemInfo.storageTotal.toFixed(0) + " GB" : "--"; accent: "#2563eb" }
+                            CompactTile { label: "可用記憶體"; value: page.formatGb(SystemInfo.memAvailable); accent: "#7c3aed" }
+                            CompactTile { label: "低記憶體"; value: SystemInfo.lowMemory ? "是" : "否"; accent: SystemInfo.lowMemory ? "#d83b01" : "#64748b" }
+                            CompactTile { label: "電池技術"; value: page.textOrDash(SystemInfo.batteryTechnology); accent: "#ca8a04" }
+                            CompactTile { label: "螢幕鏡像"; value: Resource.mirror > 0 ? "執行中" : "未啟動"; accent: Resource.mirror > 0 ? "#0f7b6c" : "#64748b" }
                         }
                     }
                 }
@@ -287,10 +287,10 @@ FluContentPage {
                     ColumnLayout {
                         anchors { fill: parent; margins: 12 }
                         spacing: 8
-                        Header { title: "下一步能力"; subtitle: "PerfDog 级增强" }
-                        CompactTile { label: "聚合"; value: "/sample 一次返回所有指标"; accent: "#0f7b6c" }
-                        CompactTile { label: "帧"; value: "framestats / jank / frame time"; accent: "#d83b01" }
-                        CompactTile { label: "进程"; value: "process list / per-pid CPU"; accent: "#2563eb" }
+                        Header { title: "下一步能力"; subtitle: "PerfDog 級增強" }
+                        CompactTile { label: "聚合"; value: "/sample 一次返回所有指標"; accent: "#0f7b6c" }
+                        CompactTile { label: "影格"; value: "framestats / jank / frame time"; accent: "#d83b01" }
+                        CompactTile { label: "處理程序"; value: "process list / per-pid CPU"; accent: "#2563eb" }
                     }
                 }
             }

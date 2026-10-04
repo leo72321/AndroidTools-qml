@@ -95,7 +95,7 @@ FluContentPage {
                     (content.indexOf(page.uninstallCurrentPkg) !== -1 || content === page.uninstallCurrentPkg)) {
                     if (title.indexOf("成功") !== -1) {
                         page.lastReportedResult = "success"
-                    } else if (title.indexOf("失败") !== -1) {
+                    } else if (title.indexOf("失敗") !== -1 || title.indexOf("失败") !== -1) {
                         page.lastReportedResult = "fail"
                         page.lastReportedReason = title
                     }
@@ -107,7 +107,7 @@ FluContentPage {
                     (content.indexOf(page.restoreCurrentPkg) !== -1 || content === page.restoreCurrentPkg)) {
                     if (title.indexOf("成功") !== -1) {
                         page.lastReportedResult = "success"
-                    } else if (title.indexOf("失败") !== -1) {
+                    } else if (title.indexOf("失敗") !== -1 || title.indexOf("失败") !== -1) {
                         page.lastReportedResult = "fail"
                         page.lastReportedReason = title
                     }
@@ -303,7 +303,7 @@ FluContentPage {
             if (page.batchIndex >= page.batchQueue.length) {
                 page.batchRunning = false
                 stop()
-                NotificationController.send("批量操作完成", "已完成 " + page.batchQueue.length + " 个应用的操作", NotificationController.Info)
+                NotificationController.send("批次操作完成", "已完成 " + page.batchQueue.length + " 個應用程式的操作", NotificationController.Info)
                 AppDetailControl.requestUpdateSoftList()
                 return
             }
@@ -423,7 +423,7 @@ FluContentPage {
                     stepFinished = true
                     if (page.lastReportedResult.length === 0) {
                         page.lastReportedResult = "fail"
-                        page.lastReportedReason = "操作超时"
+                        page.lastReportedReason = "操作逾時"
                     }
                 }
 
@@ -432,7 +432,7 @@ FluContentPage {
                         page.restoreFailList.push({
                             packageName: page.restoreCurrentPkg,
                             appName: page.restoreCurrentName,
-                            reason: page.lastReportedReason || "恢复失败"
+                            reason: page.lastReportedReason || "復原失敗"
                         })
                     } else {
                         page.restoreSuccessList.push({
@@ -457,7 +457,7 @@ FluContentPage {
             page.restoreFailList.push({
                 packageName: item.packageName,
                 appName: item.appName || item.packageName,
-                reason: "用户取消操作"
+                reason: "使用者取消操作"
             })
         }
         batchRestoreProgressPopup.close()
@@ -514,7 +514,7 @@ FluContentPage {
                     stepFinished = true
                     if (page.lastReportedResult.length === 0) {
                         page.lastReportedResult = "fail"
-                        page.lastReportedReason = "操作超时"
+                        page.lastReportedReason = "操作逾時"
                     }
                 }
 
@@ -523,7 +523,7 @@ FluContentPage {
                         page.uninstallFailList.push({
                             packageName: page.uninstallCurrentPkg,
                             appName: page.uninstallCurrentName,
-                            reason: page.lastReportedReason || "卸载失败"
+                            reason: page.lastReportedReason || "解除安裝失敗"
                         })
                     } else {
                         page.uninstallSuccessList.push({
@@ -548,7 +548,7 @@ FluContentPage {
             page.uninstallFailList.push({
                 packageName: item.packageName,
                 appName: item.appName || item.packageName,
-                reason: "用户取消操作"
+                reason: "使用者取消操作"
             })
         }
         batchUninstallProgressPopup.close()
@@ -565,17 +565,17 @@ FluContentPage {
         }
         onDropped: function(drop) {
             if (!page.device) {
-                NotificationController.send("安装失败", "请先连接设备", NotificationController.Warning)
+                NotificationController.send("安裝失敗", "請先連線裝置", NotificationController.Warning)
                 return
             }
-            for (var i = 0; i < drop.urls.length; i++) {
-                var p = page.localPath(drop.urls[i])
-                if (p.toLowerCase().endsWith(".apk")) {
-                    AppDetailControl.installApp(p)
-                    return
-                }
+            if (!drop.hasUrls || drop.urls.length === 0) return
+            var path = page.localPath(drop.urls[0])
+            if (path && String(path).toLowerCase().endsWith(".apk")) {
+                page.installApk(path)
+                drop.acceptProposedAction()
+            } else {
+                NotificationController.send("無法安裝", "請拖入有效 APK 檔案", NotificationController.Warning)
             }
-            NotificationController.send("无法安装", "请拖入有效 APK 文件", NotificationController.Warning)
         }
     }
 
@@ -584,17 +584,17 @@ FluContentPage {
         anchors.margins: 14
         spacing: 10
 
-        // ======================== 1. 顶部工具栏 ========================
+        // ======================== 1. 頂部工具列 ========================
         Panel {
             Layout.fillWidth: true
-            Layout.preferredHeight: 96
+            Layout.preferredHeight: 88
 
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 10
                 spacing: 8
 
-                // 第一行：页面标题/设备、搜索框、分类选择器、刷新与安装
+                // 第一行：頁面標題/裝置、搜尋框、分類選取器、重新整理與安裝
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 10
@@ -622,11 +622,11 @@ FluContentPage {
                         ColumnLayout {
                             spacing: 0
                             FluText {
-                                text: "应用管理"
+                                text: "應用程式管理"
                                 font: FluTextStyle.BodyStrong
                             }
                             FluText {
-                                text: page.device ? (page.device.model || page.device.code || "Android 设备") : "未连接设备"
+                                text: page.device ? (page.device.model || page.device.code || "Android 裝置") : "未連線裝置"
                                 font: FluTextStyle.Caption
                                 color: FluTheme.fontSecondaryColor
                                 elide: Text.ElideRight
@@ -635,18 +635,18 @@ FluContentPage {
                         }
                     }
 
-                    // 搜索框
+                    // 搜尋框
                     FluTextBox {
                         id: searchBox
                         Layout.preferredWidth: 240
                         Layout.preferredHeight: 32
-                        placeholderText: "搜索应用名称或包名..."
+                        placeholderText: "搜尋應用程式名稱或套件名稱……"
                         iconSource: FluentIcons.Search
                         cleanEnabled: true
                         onTextChanged: page.searchQuery = text
                     }
 
-                    // 筛选器：[全部] [第三方] [系统] [已停用] [已卸载]
+                    // 篩選器：[全部] [第三方] [系統] [已停用] [已解除安裝]
                     Rectangle {
                         Layout.preferredHeight: 32
                         Layout.preferredWidth: 350
@@ -712,7 +712,7 @@ FluContentPage {
                                 }
                             }
 
-                            // 1: 系统
+                            // 1: 系統
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
@@ -725,7 +725,7 @@ FluContentPage {
 
                                 FluText {
                                     anchors.centerIn: parent
-                                    text: "系统"
+                                    text: "系統"
                                     font: FluTextStyle.Caption
                                     color: AppDetailControl.softListType === 1 ? (FluTheme.dark ? "#5eead4" : "#0f7b6c") : FluTheme.fontPrimaryColor
                                 }
@@ -764,7 +764,7 @@ FluContentPage {
                                 }
                             }
 
-                            // 4: 已卸载
+                            // 4: 已解除安裝
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
@@ -777,7 +777,7 @@ FluContentPage {
 
                                 FluText {
                                     anchors.centerIn: parent
-                                    text: "已卸载"
+                                    text: "已解除安裝"
                                     font: FluTextStyle.Caption
                                     color: AppDetailControl.softListType === 4 ? (FluTheme.dark ? "#5eead4" : "#0f7b6c") : FluTheme.fontPrimaryColor
                                 }
@@ -794,9 +794,9 @@ FluContentPage {
 
                     Item { Layout.fillWidth: true }
 
-                    // [刷新] 与 [安装 APK]
+                    // [重新整理] 與 [安裝 APK]
                     ActionButton {
-                        label: AppDetailControl.busy ? "处理中" : "刷新"
+                        label: AppDetailControl.busy ? "處理中" : "重新整理"
                         icon: FluentIcons.Sync
                         dense: true
                         Layout.preferredWidth: 80
@@ -805,7 +805,7 @@ FluContentPage {
                     }
 
                     ActionButton {
-                        label: "安装 APK"
+                        label: "安裝 APK"
                         icon: FluentIcons.Add
                         dense: true
                         accent: "#0f7b6c"
@@ -815,13 +815,13 @@ FluContentPage {
                     }
                 }
 
-                // 第二行：多选控制组与统计提示
+                // 第二行：多選控制組與統計提示
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
 
                     ActionButton {
-                        label: "全选"
+                        label: "全選"
                         dense: true
                         Layout.preferredWidth: 64
                         enabled: appListView.count > 0 && !page.uninstallRunning && !page.restoreRunning
@@ -829,7 +829,7 @@ FluContentPage {
                     }
 
                     ActionButton {
-                        label: "取消全选"
+                        label: "取消全選"
                         dense: true
                         Layout.preferredWidth: 80
                         enabled: page.selectedCount > 0 && !page.uninstallRunning && !page.restoreRunning
@@ -837,9 +837,9 @@ FluContentPage {
                     }
 
                     ActionButton {
-                        label: "反选"
+                        label: "反向選取"
                         dense: true
-                        Layout.preferredWidth: 64
+                        Layout.preferredWidth: 76
                         enabled: appListView.count > 0 && !page.uninstallRunning && !page.restoreRunning
                         onPressed: page.invertSelection()
                     }
@@ -853,13 +853,13 @@ FluContentPage {
                     }
 
                     FluText {
-                        text: "已选 " + page.selectedCount + " 个应用"
+                        text: "已選取 " + page.selectedCount + " 個應用程式"
                         font: FluTextStyle.Caption
                         color: page.selectedCount > 0 ? FluTheme.primaryColor : FluTheme.fontSecondaryColor
                     }
 
                     FluText {
-                        text: "（列表共 " + appListView.count + " 个）" + (page.searchQuery.length > 0 ? " [过滤中]" : "")
+                        text: "（清單共 " + appListView.count + " 個）" + (page.searchQuery.length > 0 ? " [篩選中]" : "")
                         font: FluTextStyle.Caption
                         color: FluTheme.fontSecondaryColor
                     }
@@ -867,7 +867,7 @@ FluContentPage {
                     Item { Layout.fillWidth: true }
 
                     FluText {
-                        text: AppDetailControl.busy ? "ADB 任务执行中..." : ""
+                        text: AppDetailControl.busy ? "ADB 任務執行中..." : ""
                         font: FluTextStyle.Caption
                         color: "#ca8a04"
                         visible: AppDetailControl.busy
@@ -876,13 +876,13 @@ FluContentPage {
             }
         }
 
-        // ======================== 2. 主体区：列表 + 详情 ========================
+        // ======================== 2. 主體區：清單 + 詳情 ========================
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 10
 
-            // 左侧：主应用列表 Panel
+            // 左側：主應用程式清單 Panel
             Panel {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -893,7 +893,7 @@ FluContentPage {
                     anchors.margins: 8
                     spacing: 4
 
-                    // 表头
+                    // 表頭
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 28
@@ -907,13 +907,13 @@ FluContentPage {
                             spacing: 8
 
                             FluText {
-                                text: "选择"
+                                text: "選取"
                                 font: FluTextStyle.Caption
                                 color: FluTheme.fontSecondaryColor
                                 Layout.preferredWidth: 32
                             }
                             FluText {
-                                text: "应用信息"
+                                text: "應用程式資訊"
                                 font: FluTextStyle.Caption
                                 color: FluTheme.fontSecondaryColor
                                 Layout.fillWidth: true
@@ -926,7 +926,7 @@ FluContentPage {
                                 horizontalAlignment: Text.AlignRight
                             }
                             FluText {
-                                text: "类型"
+                                text: "類型"
                                 font: FluTextStyle.Caption
                                 color: FluTheme.fontSecondaryColor
                                 Layout.preferredWidth: 54
@@ -974,7 +974,7 @@ FluContentPage {
                                 }
                             }
 
-                            // 延迟加载图标机制
+                            // 延遲載入圖示機制
                             Timer {
                                 interval: 100 + Math.min(index, 10) * 50
                                 running: !model.icon && (model.packageName || "").length > 0
@@ -998,7 +998,7 @@ FluContentPage {
                                     anchors.rightMargin: 8
                                     spacing: 8
 
-                                    // 多选 CheckBox
+                                    // 多選 CheckBox
                                     FluCheckBox {
                                         id: rowCheckBox
                                         text: ""
@@ -1009,7 +1009,7 @@ FluContentPage {
                                         }
                                     }
 
-                                    // App 图标
+                                    // App 圖示
                                     AppIconBox {
                                         Layout.preferredWidth: 32
                                         Layout.preferredHeight: 32
@@ -1018,7 +1018,7 @@ FluContentPage {
                                         accent: model.installedForCurrentUser === false ? "#d83b01" : (model.isEnabled === false ? "#ca8a04" : (model.isSystemApp ? "#64748b" : "#0f7b6c"))
                                     }
 
-                                    // App 名称与包名
+                                    // App 名稱與套件名稱
                                     ColumnLayout {
                                         Layout.fillWidth: true
                                         Layout.minimumWidth: 0
@@ -1052,10 +1052,10 @@ FluContentPage {
                                         horizontalAlignment: Text.AlignRight
                                     }
 
-                                    // 类别胶囊
+                                    // 類別膠囊
                                     Rectangle {
-                                        Layout.preferredWidth: 50
-                                        Layout.preferredHeight: 20
+                                        Layout.preferredWidth: 54
+                                        Layout.preferredHeight: 22
                                         radius: 4
                                         color: {
                                             if (model.installedForCurrentUser === false) {
@@ -1084,9 +1084,9 @@ FluContentPage {
                                         FluText {
                                             anchors.centerIn: parent
                                             text: {
-                                                if (model.installedForCurrentUser === false) return "已卸载"
+                                                if (model.installedForCurrentUser === false) return "已解除安裝"
                                                 if (model.isEnabled === false) return "已停用"
-                                                return model.isSystemApp ? "系统" : "第三方"
+                                                return model.isSystemApp ? "系統" : "第三方"
                                             }
                                             font: FluTextStyle.Caption
                                             color: {
@@ -1098,11 +1098,11 @@ FluContentPage {
                                     }
                                 }
 
-                                // 只有点击非 Checkbox 区域才触发单项查看详情
+                                // 只有點擊非 Checkbox 區域才觸發個別檢視詳情
                                 MouseArea {
                                     id: rowMouse
                                     anchors.fill: parent
-                                    anchors.leftMargin: 36 // 避免拦截 CheckBox
+                                    anchors.leftMargin: 36 // 避免攔截 CheckBox
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
@@ -1130,14 +1130,14 @@ FluContentPage {
                 }
             }
 
-            // 右侧：应用详情面板 Panel
+            // 右側：應用程式詳細資訊面板 Panel
             Panel {
                 Layout.preferredWidth: 330
                 Layout.minimumWidth: 300
                 Layout.maximumWidth: 360
                 Layout.fillHeight: true
 
-                // 空状态：未选择应用
+                // 空狀態：未選取應用程式
                 ColumnLayout {
                     anchors.centerIn: parent
                     spacing: 12
@@ -1160,13 +1160,13 @@ FluContentPage {
 
                     FluText {
                         Layout.alignment: Qt.AlignHCenter
-                        text: "选择应用查看详情"
+                        text: "選取應用程式檢視詳細資訊"
                         font: FluTextStyle.BodyStrong
                     }
 
                     FluText {
                         Layout.fillWidth: true
-                        text: "在左侧列表中点击任意应用，即可查看详细属性并执行启动、停止、提取与卸载等单项操作。"
+                        text: "在左側清單中按一下任意應用程式，即可檢視詳細屬性並執行啟動、停止、擷取與解除安裝等個別操作。"
                         font: FluTextStyle.Caption
                         color: FluTheme.fontSecondaryColor
                         wrapMode: Text.WordWrap
@@ -1174,7 +1174,7 @@ FluContentPage {
                     }
                 }
 
-                // 详情内容
+                // 詳細內容
                 ScrollView {
                     anchors.fill: parent
                     anchors.margins: 12
@@ -1186,7 +1186,7 @@ FluContentPage {
                         width: parent.width
                         spacing: 12
 
-                        // 头部：图标 + 标题 + 包名
+                        // 頂部：圖示 + 標題 + 套件名稱
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 10
@@ -1255,9 +1255,9 @@ FluContentPage {
                                         FluText {
                                             anchors.centerIn: parent
                                             text: {
-                                                if (page.selectedInstalledForCurrentUser === false) return "已卸载"
+                                                if (page.selectedInstalledForCurrentUser === false) return "已解除安裝"
                                                 if (page.selectedIsEnabled === false) return "已停用"
-                                                return page.selectedIsSystem ? "系统应用" : "第三方"
+                                                return page.selectedIsSystem ? "系統應用程式" : "第三方"
                                             }
                                             font: FluTextStyle.Caption
                                             color: {
@@ -1271,9 +1271,9 @@ FluContentPage {
                             }
                         }
 
-                        // 单项操作按钮组 (GridLayout 3x2)
+                        // 個別操作按鈕組 (GridLayout 3x2)
                         FluText {
-                            text: "单项操作"
+                            text: "個別操作"
                             font: FluTextStyle.Caption
                             color: FluTheme.fontSecondaryColor
                         }
@@ -1284,9 +1284,9 @@ FluContentPage {
                             columnSpacing: 6
                             rowSpacing: 6
 
-                            // 恢复 (仅针对已卸载应用)
+                            // 復原 (僅針對已解除安裝應用程式)
                             ActionButton {
-                                label: "恢复"
+                                label: "復原"
                                 icon: FluentIcons.UpdateRestore
                                 dense: true
                                 Layout.fillWidth: true
@@ -1296,9 +1296,9 @@ FluContentPage {
                                 onPressed: AppDetailControl.restoreApp(page.selectedPackage)
                             }
 
-                            // 启用 (仅针对已停用应用)
+                            // 啟用 (僅針對已停用應用程式)
                             ActionButton {
-                                label: "启用"
+                                label: "啟用"
                                 icon: FluentIcons.Play
                                 dense: true
                                 Layout.fillWidth: true
@@ -1309,7 +1309,7 @@ FluContentPage {
                             }
 
                             ActionButton {
-                                label: "启动"
+                                label: "啟動"
                                 icon: FluentIcons.Play
                                 dense: true
                                 Layout.fillWidth: true
@@ -1327,7 +1327,7 @@ FluContentPage {
                             }
 
                             ActionButton {
-                                label: "提取"
+                                label: "擷取"
                                 icon: FluentIcons.Download
                                 dense: true
                                 Layout.fillWidth: true
@@ -1336,7 +1336,7 @@ FluContentPage {
                             }
 
                             ActionButton {
-                                label: "冻结"
+                                label: "凍結"
                                 icon: FluentIcons.Lock
                                 dense: true
                                 Layout.fillWidth: true
@@ -1345,7 +1345,7 @@ FluContentPage {
                             }
 
                             ActionButton {
-                                label: "清数据"
+                                label: "清除資料"
                                 dense: true
                                 Layout.fillWidth: true
                                 accent: "#ca8a04"
@@ -1354,7 +1354,7 @@ FluContentPage {
                             }
 
                             ActionButton {
-                                label: "卸载"
+                                label: "解除安裝"
                                 icon: FluentIcons.Delete
                                 dense: true
                                 Layout.fillWidth: true
@@ -1364,9 +1364,9 @@ FluContentPage {
                             }
                         }
 
-                        // 详细属性 Tiles
+                        // 詳細屬性 Tiles
                         FluText {
-                            text: "应用详情"
+                            text: "應用程式詳情"
                             font: FluTextStyle.Caption
                             color: FluTheme.fontSecondaryColor
                             Layout.topMargin: 4
@@ -1378,43 +1378,43 @@ FluContentPage {
                             rowSpacing: 6
 
                             CompactTile {
-                                label: "版本名"
+                                label: "版本名稱"
                                 value: page.selectedAppVersion || "--"
                                 accent: "#2563eb"
                             }
 
                             CompactTile {
-                                label: "版本号 (Code)"
+                                label: "版本代碼 (Code)"
                                 value: (AppDetailControl.versionCode > 0 ? String(AppDetailControl.versionCode) : page.selectedAppVersionCode) || "--"
                                 accent: "#2563eb"
                             }
 
                             CompactTile {
-                                label: "首次安装"
+                                label: "首次安裝"
                                 value: AppDetailControl.installDate || page.selectedInstallDate || "--"
                                 accent: "#64748b"
                             }
 
                             CompactTile {
-                                label: "最后更新"
+                                label: "最後更新"
                                 value: page.selectedLastUpdate || "--"
                                 accent: "#64748b"
                             }
 
                             CompactTile {
-                                label: "SDK 范围"
+                                label: "SDK 範圍"
                                 value: ((AppDetailControl.minSdk || page.selectedMinSdk || "--") + " -> " + (AppDetailControl.targetSdk || page.selectedTargetSdk || "--"))
                                 accent: "#7c3aed"
                             }
 
                             CompactTile {
-                                label: "应用 UID"
+                                label: "應用程式 UID"
                                 value: page.selectedAppId || "--"
                                 accent: "#ca8a04"
                             }
 
                             CompactTile {
-                                label: "APK 路径"
+                                label: "APK 路徑"
                                 value: page.selectedAppPath || "--"
                                 accent: "#0f7b6c"
                             }
@@ -1424,7 +1424,7 @@ FluContentPage {
             }
         }
 
-        // ======================== 3. 底部批量操作工具栏 ========================
+        // ======================== 3. 底部批次操作工具列 ========================
         Panel {
             Layout.fillWidth: true
             Layout.preferredHeight: 52
@@ -1435,7 +1435,7 @@ FluContentPage {
                 anchors.rightMargin: 12
                 spacing: 10
 
-                // 左侧选中状态
+                // 左側選取狀態
                 Rectangle {
                     Layout.preferredWidth: 26
                     Layout.preferredHeight: 26
@@ -1450,24 +1450,24 @@ FluContentPage {
                 }
 
                 FluText {
-                    text: page.selectedCount > 0 ? ("已选中 " + page.selectedCount + " 个应用") : "未选择应用（勾选左侧列表以启用批量操作）"
+                    text: page.selectedCount > 0 ? ("已選取 " + page.selectedCount + " 個應用程式") : "未選取應用程式（勾選左側清單以啟用批次操作）"
                     font: FluTextStyle.Body
-                    color: page.selectedCount > 0 ? FluTheme.fontPrimaryColor : FluTheme.fontSecondaryColor
+                    color: page.selectedCount > 0 ? FluTheme.primaryColor : FluTheme.fontSecondaryColor
                 }
 
                 ActionButton {
-                    label: "清空选择"
+                    label: "清除選取"
                     dense: true
-                    Layout.preferredWidth: 70
+                    Layout.preferredWidth: 76
                     visible: page.selectedCount > 0 && !page.uninstallRunning && !page.restoreRunning
                     onPressed: page.deselectAll()
                 }
 
                 Item { Layout.fillWidth: true }
 
-                // 批量操作按钮
+                // 批次操作按鈕
                 ActionButton {
-                    label: "批量启动"
+                    label: "批次啟動"
                     icon: FluentIcons.Play
                     dense: true
                     Layout.preferredWidth: 88
@@ -1476,7 +1476,7 @@ FluContentPage {
                 }
 
                 ActionButton {
-                    label: "批量停止"
+                    label: "批次停止"
                     icon: FluentIcons.Stop
                     dense: true
                     Layout.preferredWidth: 88
@@ -1485,7 +1485,7 @@ FluContentPage {
                 }
 
                 ActionButton {
-                    label: "批量提取"
+                    label: "批次擷取"
                     icon: FluentIcons.Download
                     dense: true
                     Layout.preferredWidth: 92
@@ -1494,7 +1494,7 @@ FluContentPage {
                 }
 
                 ActionButton {
-                    label: "批量冻结"
+                    label: "批次凍結"
                     icon: FluentIcons.Lock
                     dense: true
                     Layout.preferredWidth: 88
@@ -1503,7 +1503,7 @@ FluContentPage {
                 }
 
                 ActionButton {
-                    label: "批量启用"
+                    label: "批次啟用"
                     icon: FluentIcons.Play
                     dense: true
                     Layout.preferredWidth: 88
@@ -1512,7 +1512,7 @@ FluContentPage {
                 }
 
                 ActionButton {
-                    label: "批量恢复"
+                    label: "批次復原"
                     icon: FluentIcons.UpdateRestore
                     dense: true
                     Layout.preferredWidth: 88
@@ -1522,7 +1522,7 @@ FluContentPage {
                 }
 
                 ActionButton {
-                    label: "清除数据"
+                    label: "清除資料"
                     dense: true
                     Layout.preferredWidth: 80
                     accent: "#ca8a04"
@@ -1531,10 +1531,10 @@ FluContentPage {
                 }
 
                 ActionButton {
-                    label: "批量卸载"
+                    label: "批次解除安裝"
                     icon: FluentIcons.Delete
                     dense: true
-                    Layout.preferredWidth: 96
+                    Layout.preferredWidth: 104
                     accent: "#d83b01"
                     enabled: page.selectedCount > 0 && !AppDetailControl.busy && !page.uninstallRunning && !page.restoreRunning && !page.batchRunning
                     onPressed: batchUninstallConfirmPopup.open()
@@ -1543,31 +1543,31 @@ FluContentPage {
         }
     }
 
-    // ======================== 4. 对话框与弹出层 ========================
+    // ======================== 4. 對話框與彈出層 ========================
 
-    // 1. 安装 APK 弹窗
+    // 1. 安裝 APK 彈窗
     FileDialog {
         id: apkDialog
-        title: "选择 APK"
+        title: "選取 APK"
         nameFilters: ["APK files (*.apk)"]
         onAccepted: AppDetailControl.installApp(page.localPath(currentFile))
     }
 
-    // 2. 单个提取目录弹窗
+    // 2. 單個擷取目錄彈窗
     FolderDialog {
         id: singleExtractDialog
-        title: "选择 APK 提取保存目录"
+        title: "選取 APK 擷取儲存目錄"
         onAccepted: AppDetailControl.extractApp(page.selectedPackage, page.localPath(selectedFolder))
     }
 
-    // 3. 批量提取目录弹窗
+    // 3. 批次擷取目錄彈窗
     FolderDialog {
         id: batchExtractDialog
-        title: "选择批量 APK 提取保存目录"
+        title: "選取批次 APK 擷取儲存目錄"
         onAccepted: page.startBatchAction("extract", page.localPath(selectedFolder))
     }
 
-    // 4. 批量清除数据确认弹窗
+    // 4. 批次清除資料確認彈窗
     FluPopup {
         id: confirmBatchClearDataPopup
         width: 420
@@ -1588,13 +1588,13 @@ FluContentPage {
                     iconColor: "#ca8a04"
                 }
                 FluText {
-                    text: "清除应用数据确认"
+                    text: "清除應用程式資料確認"
                     font: FluTextStyle.BodyStrong
                 }
             }
 
             FluText {
-                text: "确定要清除选取的 " + page.selectedCount + " 个应用程序的全部数据和缓存吗？此操作无法撤销。"
+                text: "確定要清除選取的 " + page.selectedCount + " 個應用程式的全部資料與快取嗎？此操作無法復原。"
                 font: FluTextStyle.Body
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -1611,7 +1611,7 @@ FluContentPage {
                     onClicked: confirmBatchClearDataPopup.close()
                 }
                 FluFilledButton {
-                    text: "确认清除"
+                    text: "確認清除"
                     normalColor: "#ca8a04"
                     onClicked: {
                         confirmBatchClearDataPopup.close()
@@ -1622,7 +1622,7 @@ FluContentPage {
         }
     }
 
-    // 5. 批量卸载确认 Dialog (重点功能)
+    // 5. 批次解除安裝確認 Dialog (重點功能)
     FluPopup {
         id: batchUninstallConfirmPopup
         width: 480
@@ -1651,12 +1651,12 @@ FluContentPage {
                     iconColor: "#d83b01"
                 }
                 FluText {
-                    text: "批量卸载确认"
+                    text: "批次解除安裝確認"
                     font: FluTextStyle.Title
                 }
             }
 
-            // 包含系统应用的警告
+            // 包含系統應用程式的警告
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 34
@@ -1676,7 +1676,7 @@ FluContentPage {
                         iconColor: "#d83b01"
                     }
                     FluText {
-                        text: "警告：选中的应用中包含系统应用，卸载可能导致系统异常！"
+                        text: "警告：選取的應用程式中包含系統應用程式，解除安裝可能導致系統異常！"
                         font: FluTextStyle.Caption
                         color: "#ef4444"
                         Layout.fillWidth: true
@@ -1685,13 +1685,13 @@ FluContentPage {
             }
 
             FluText {
-                text: "确定要卸载以下选取的 " + batchUninstallConfirmPopup.uninstallList.length + " 个应用程序吗？此操作无法撤销。"
+                text: "確定要解除安裝以下選取的 " + batchUninstallConfirmPopup.uninstallList.length + " 個應用程式嗎？此操作無法復原。"
                 font: FluTextStyle.Body
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
 
-            // 即将卸载的应用清单
+            // 即將解除安裝的應用程式清單
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -1748,7 +1748,7 @@ FluContentPage {
                                 color: Qt.rgba(0.85, 0.23, 0.0, 0.2)
                                 FluText {
                                     anchors.centerIn: parent
-                                    text: "系统"
+                                    text: "系統"
                                     font: FluTextStyle.Caption
                                     color: "#ef4444"
                                 }
@@ -1758,7 +1758,7 @@ FluContentPage {
                 }
             }
 
-            // 底部操作按钮
+            // 底部操作按鈕
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 10
@@ -1771,7 +1771,7 @@ FluContentPage {
                 }
 
                 FluFilledButton {
-                    text: "确定卸载 (" + batchUninstallConfirmPopup.uninstallList.length + ")"
+                    text: "確定解除安裝 (" + batchUninstallConfirmPopup.uninstallList.length + ")"
                     normalColor: "#d83b01"
                     onClicked: page.startBatchUninstall()
                 }
@@ -1779,7 +1779,7 @@ FluContentPage {
         }
     }
 
-    // 6. 批量卸载进度 Dialog (重点功能)
+    // 6. 批次解除安裝進度 Dialog (重點功能)
     FluPopup {
         id: batchUninstallProgressPopup
         width: 440
@@ -1802,28 +1802,28 @@ FluContentPage {
                 ColumnLayout {
                     spacing: 2
                     FluText {
-                        text: "正在批量卸载应用程序..."
+                        text: "正在批次解除安裝應用程式..."
                         font: FluTextStyle.BodyStrong
                     }
                     FluText {
-                        text: "请保持设备连接，ADB 正在顺序执行卸载任务"
+                        text: "請保持裝置連線，ADB 正在依序執行解除安裝任務"
                         font: FluTextStyle.Caption
                         color: FluTheme.fontSecondaryColor
                     }
                 }
             }
 
-            // 进度信息
+            // 進度資訊
             RowLayout {
                 Layout.fillWidth: true
                 FluText {
-                    text: "当前进度: " + (page.uninstallIndex + 1) + " / " + Math.max(page.uninstallTotal, 1) + " (" + Math.round((page.uninstallIndex) / Math.max(page.uninstallTotal, 1) * 100) + "%)"
+                    text: "目前進度: " + (page.uninstallIndex + 1) + " / " + Math.max(page.uninstallTotal, 1) + " (" + Math.round((page.uninstallIndex) / Math.max(page.uninstallTotal, 1) * 100) + "%)"
                     font: FluTextStyle.Body
                     Layout.fillWidth: true
                 }
             }
 
-            // 进度条
+            // 進度條
             FluProgressBar {
                 Layout.fillWidth: true
                 strokeWidth: 6
@@ -1831,7 +1831,7 @@ FluContentPage {
                 value: page.uninstallIndex / Math.max(page.uninstallTotal, 1)
             }
 
-            // 当前正在卸载的应用
+            // 目前正在解除安裝的應用程式
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 34
@@ -1843,12 +1843,12 @@ FluContentPage {
                     anchors.margins: 8
                     spacing: 6
                     FluText {
-                        text: "正在卸载: "
+                        text: "正在解除安裝: "
                         font: FluTextStyle.Caption
                         color: FluTheme.fontSecondaryColor
                     }
                     FluText {
-                        text: (page.uninstallCurrentName || "准备中") + " (" + (page.uninstallCurrentPkg || "-") + ")"
+                        text: (page.uninstallCurrentName || "準備中") + " (" + (page.uninstallCurrentPkg || "-") + ")"
                         font: FluTextStyle.Caption
                         elide: Text.ElideMiddle
                         Layout.fillWidth: true
@@ -1862,14 +1862,14 @@ FluContentPage {
                 Layout.fillWidth: true
                 Item { Layout.fillWidth: true }
                 FluButton {
-                    text: "中断剩余任务"
+                    text: "中斷剩餘任務"
                     onClicked: page.cancelBatchUninstall()
                 }
             }
         }
     }
 
-    // 7. 批量卸载完成摘要 Dialog (重点功能)
+    // 7. 批次解除安裝完成摘要 Dialog (重點功能)
     FluPopup {
         id: batchUninstallSummaryPopup
         width: 460
@@ -1890,12 +1890,12 @@ FluContentPage {
                     iconColor: page.uninstallFailList.length === 0 ? "#10b981" : "#ca8a04"
                 }
                 FluText {
-                    text: "批量卸载完成"
+                    text: "批次解除安裝完成"
                     font: FluTextStyle.Title
                 }
             }
 
-            // 统计卡片
+            // 統計資訊卡片
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 10
@@ -1913,13 +1913,13 @@ FluContentPage {
                         spacing: 2
                         FluText {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: "成功卸载"
+                            text: "成功解除安裝"
                             font: FluTextStyle.Caption
                             color: FluTheme.fontSecondaryColor
                         }
                         FluText {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: page.uninstallSuccessList.length + " 个"
+                            text: page.uninstallSuccessList.length + " 個"
                             font: FluTextStyle.BodyStrong
                             color: "#10b981"
                         }
@@ -1941,13 +1941,13 @@ FluContentPage {
                         spacing: 2
                         FluText {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: "失败 / 跳过"
+                            text: "失敗 / 略過"
                             font: FluTextStyle.Caption
                             color: FluTheme.fontSecondaryColor
                         }
                         FluText {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: page.uninstallFailList.length + " 个"
+                            text: page.uninstallFailList.length + " 個"
                             font: FluTextStyle.BodyStrong
                             color: page.uninstallFailList.length > 0 ? "#ef4444" : FluTheme.fontSecondaryColor
                         }
@@ -1955,9 +1955,9 @@ FluContentPage {
                 }
             }
 
-            // 失败列表（如果有）
+            // 失敗清單（如果有）
             FluText {
-                text: "失败应用列表："
+                text: "失敗應用程式清單："
                 font: FluTextStyle.Caption
                 color: FluTheme.fontSecondaryColor
                 visible: page.uninstallFailList.length > 0
@@ -2007,7 +2007,7 @@ FluContentPage {
                             }
 
                             FluText {
-                                text: modelData.reason || "卸载失败"
+                                text: modelData.reason || "解除安裝失敗"
                                 font: FluTextStyle.Caption
                                 color: "#ef4444"
                             }
@@ -2032,7 +2032,7 @@ FluContentPage {
         }
     }
 
-    // 8. 批量恢复确认 Dialog (重点功能)
+    // 8. 批次復原確認 Dialog (重點功能)
     FluPopup {
         id: batchRestoreConfirmPopup
         width: 480
@@ -2055,19 +2055,19 @@ FluContentPage {
                     iconColor: "#0f7b6c"
                 }
                 FluText {
-                    text: "批量恢复确认"
+                    text: "批次復原確認"
                     font: FluTextStyle.Title
                 }
             }
 
             FluText {
-                text: "确定要恢复以下选取的 " + batchRestoreConfirmPopup.restoreList.length + " 个应用程序吗？"
+                text: "確定要復原以下選取的 " + batchRestoreConfirmPopup.restoreList.length + " 個應用程式嗎？"
                 font: FluTextStyle.Body
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
 
-            // 即将恢复的应用清单
+            // 即將復原的應用程式清單
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -2123,7 +2123,7 @@ FluContentPage {
                                 color: Qt.rgba(0.06, 0.48, 0.42, 0.2)
                                 FluText {
                                     anchors.centerIn: parent
-                                    text: "待恢复"
+                                    text: "待復原"
                                     font: FluTextStyle.Caption
                                     color: "#0f7b6c"
                                 }
@@ -2133,7 +2133,7 @@ FluContentPage {
                 }
             }
 
-            // 底部操作按钮
+            // 底部操作按鈕
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 10
@@ -2146,7 +2146,7 @@ FluContentPage {
                 }
 
                 FluFilledButton {
-                    text: "确定恢复 (" + batchRestoreConfirmPopup.restoreList.length + ")"
+                    text: "確定復原 (" + batchRestoreConfirmPopup.restoreList.length + ")"
                     normalColor: "#0f7b6c"
                     onClicked: page.startBatchRestore()
                 }
@@ -2154,7 +2154,7 @@ FluContentPage {
         }
     }
 
-    // 9. 批量恢复进度 Dialog (重点功能)
+    // 9. 批次復原進度 Dialog (重點功能)
     FluPopup {
         id: batchRestoreProgressPopup
         width: 440
@@ -2177,28 +2177,28 @@ FluContentPage {
                 ColumnLayout {
                     spacing: 2
                     FluText {
-                        text: "正在批量恢复应用程序..."
+                        text: "正在批次復原應用程式..."
                         font: FluTextStyle.BodyStrong
                     }
                     FluText {
-                        text: "请保持设备连接，ADB 正在顺序执行恢复任务"
+                        text: "請保持裝置連線，ADB 正在依序執行復原任務"
                         font: FluTextStyle.Caption
                         color: FluTheme.fontSecondaryColor
                     }
                 }
             }
 
-            // 进度信息
+            // 進度資訊
             RowLayout {
                 Layout.fillWidth: true
                 FluText {
-                    text: "当前进度: " + (page.restoreIndex + 1) + " / " + Math.max(page.restoreTotal, 1) + " (" + Math.round((page.restoreIndex) / Math.max(page.restoreTotal, 1) * 100) + "%)"
+                    text: "目前進度: " + (page.restoreIndex + 1) + " / " + Math.max(page.restoreTotal, 1) + " (" + Math.round((page.restoreIndex) / Math.max(page.restoreTotal, 1) * 100) + "%)"
                     font: FluTextStyle.Body
                     Layout.fillWidth: true
                 }
             }
 
-            // 进度条
+            // 進度條
             FluProgressBar {
                 Layout.fillWidth: true
                 strokeWidth: 6
@@ -2206,7 +2206,7 @@ FluContentPage {
                 value: page.restoreIndex / Math.max(page.restoreTotal, 1)
             }
 
-            // 当前正在恢复的应用
+            // 目前正在復原的應用程式
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 34
@@ -2218,12 +2218,12 @@ FluContentPage {
                     anchors.margins: 8
                     spacing: 6
                     FluText {
-                        text: "正在恢复: "
+                        text: "正在復原: "
                         font: FluTextStyle.Caption
                         color: FluTheme.fontSecondaryColor
                     }
                     FluText {
-                        text: (page.restoreCurrentName || "准备中") + " (" + (page.restoreCurrentPkg || "-") + ")"
+                        text: (page.restoreCurrentName || "準備中") + " (" + (page.restoreCurrentPkg || "-") + ")"
                         font: FluTextStyle.Caption
                         elide: Text.ElideMiddle
                         Layout.fillWidth: true
@@ -2237,14 +2237,14 @@ FluContentPage {
                 Layout.fillWidth: true
                 Item { Layout.fillWidth: true }
                 FluButton {
-                    text: "中断剩余任务"
+                    text: "中斷剩餘任務"
                     onClicked: page.cancelBatchRestore()
                 }
             }
         }
     }
 
-    // 10. 批量恢复完成摘要 Dialog (重点功能)
+    // 10. 批次復原完成摘要 Dialog (重點功能)
     FluPopup {
         id: batchRestoreSummaryPopup
         width: 460
@@ -2265,12 +2265,12 @@ FluContentPage {
                     iconColor: page.restoreFailList.length === 0 ? "#10b981" : "#ca8a04"
                 }
                 FluText {
-                    text: "批量恢复完成"
+                    text: "批次復原完成"
                     font: FluTextStyle.Title
                 }
             }
 
-            // 统计卡片
+            // 統計資訊卡片
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 10
@@ -2288,13 +2288,13 @@ FluContentPage {
                         spacing: 2
                         FluText {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: "成功恢复"
+                            text: "成功復原"
                             font: FluTextStyle.Caption
                             color: FluTheme.fontSecondaryColor
                         }
                         FluText {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: page.restoreSuccessList.length + " 个"
+                            text: page.restoreSuccessList.length + " 個"
                             font: FluTextStyle.BodyStrong
                             color: "#10b981"
                         }
@@ -2316,13 +2316,13 @@ FluContentPage {
                         spacing: 2
                         FluText {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: "失败 / 跳过"
+                            text: "失敗 / 略過"
                             font: FluTextStyle.Caption
                             color: FluTheme.fontSecondaryColor
                         }
                         FluText {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: page.restoreFailList.length + " 个"
+                            text: page.restoreFailList.length + " 個"
                             font: FluTextStyle.BodyStrong
                             color: page.restoreFailList.length > 0 ? "#ef4444" : FluTheme.fontSecondaryColor
                         }
@@ -2330,9 +2330,9 @@ FluContentPage {
                 }
             }
 
-            // 失败列表（如果有）
+            // 失敗清單（如果有）
             FluText {
-                text: "失败应用列表："
+                text: "失敗應用程式清單："
                 font: FluTextStyle.Caption
                 color: FluTheme.fontSecondaryColor
                 visible: page.restoreFailList.length > 0
@@ -2382,7 +2382,7 @@ FluContentPage {
                             }
 
                             FluText {
-                                text: modelData.reason || "恢复失败"
+                                text: modelData.reason || "復原失敗"
                                 font: FluTextStyle.Caption
                                 color: "#ef4444"
                             }

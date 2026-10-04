@@ -21,6 +21,19 @@
 #include "cpp/utils/serviceregistry.h"
 #include "cpp/app/appglobal.h"
 #include "cpp/imagePageTool/scrcpy/ui/mirror/imageframeitem.h"
+#include "cpp/imagePageTool/scrcpy/core/include/QtScrcpyCore.h"
+#include <QFontDatabase>
+
+#ifdef Q_OS_WIN
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include "third_party/FluentUI/src/FluTextStyle.h"
+#endif
 
 bool checkADB()
 {
@@ -69,7 +82,64 @@ void forceOpenGL()
 
 int main(int argc, char *argv[])
 {
+#ifdef Q_OS_WIN
+    HANDLE hJob = CreateJobObject(nullptr, nullptr);
+    if (hJob) {
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION jeli = { 0 };
+        jeli.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        if (SetInformationJobObject(hJob, JobObjectExtendedLimitInformation, &jeli, sizeof(jeli))) {
+            AssignProcessToJobObject(hJob, GetCurrentProcess());
+        }
+    }
+#endif
+
     QApplication app(argc, argv);
+
+    const QStringList fontFamilies = {
+        QStringLiteral("Source Han Sans TC"),
+        QStringLiteral("Noto Sans TC"),
+        QStringLiteral("Noto Sans CJK TC"),
+        QStringLiteral("Microsoft JhengHei UI"),
+        QStringLiteral("Microsoft JhengHei"),
+        QStringLiteral("Segoe UI")
+    };
+
+    QFont defaultFont = app.font();
+    defaultFont.setFamilies(fontFamilies);
+    app.setFont(defaultFont);
+
+#ifdef Q_OS_WIN
+    QString selectedFamily = QStringLiteral("Microsoft JhengHei UI");
+    const QStringList availableFamilies = QFontDatabase::families();
+    for (const QString &family : fontFamilies) {
+        if (availableFamilies.contains(family, Qt::CaseInsensitive)) {
+            selectedFamily = family;
+            break;
+        }
+    }
+
+    auto *textStyle = FluTextStyle::getInstance();
+    if (textStyle) {
+        textStyle->family(selectedFamily);
+
+        auto createStyleFont = [&](int pixelSize, QFont::Weight weight = QFont::Normal) {
+            QFont f;
+            f.setFamily(selectedFamily);
+            f.setFamilies(fontFamilies);
+            f.setPixelSize(pixelSize);
+            f.setWeight(weight);
+            return f;
+        };
+
+        textStyle->Caption(createStyleFont(12));
+        textStyle->Body(createStyleFont(13));
+        textStyle->BodyStrong(createStyleFont(13, QFont::DemiBold));
+        textStyle->Subtitle(createStyleFont(20, QFont::DemiBold));
+        textStyle->Title(createStyleFont(28, QFont::DemiBold));
+        textStyle->TitleLarge(createStyleFont(40, QFont::DemiBold));
+        textStyle->Display(createStyleFont(68, QFont::DemiBold));
+    }
+#endif
 
 #ifdef Q_OS_LINUX
     qunsetenv("http_proxy");
@@ -121,6 +191,13 @@ int main(int argc, char *argv[])
     const QUrl url("qrc:/qml2/Main.qml");
     engine.load(url);
     qInfo() << "QML界面加载完成，用时(ms):" << loaderTimer.elapsed();
+
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, [&]() {
+        // 斷開投屏設備
+        qsc::IDeviceManage::getInstance().disconnectAllDevice();
+        // 呼叫 ADT::CONNECTMANAGER->cleanup();
+        ADT::CONNECTMANAGER->cleanup();
+    });
 
     return app.exec();
 }

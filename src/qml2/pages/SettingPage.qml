@@ -9,7 +9,7 @@ import App 1.0
 import ConnectManager 1.0
 
 FluContentPage {
-    title: "设置"
+    title: "設定"
 
 
     ScrollView {
@@ -34,7 +34,7 @@ FluContentPage {
                     anchors.margins: 16
                     spacing: 10
 
-                    FluText { text: "壁纸"; font: FluTextStyle.Subtitle }
+                    FluText { text: "桌布"; font: FluTextStyle.Subtitle }
 
                     ScrollView {
                         Layout.fillWidth: true
@@ -58,7 +58,7 @@ FluContentPage {
                                     MouseArea { anchors.fill: parent; onClicked: WallPaperModel.setCurrentIndex(index) }
                                 }
                             }
-                            FluButton { text: "+ 添加"; Layout.preferredWidth: 80; Layout.preferredHeight: 75; onClicked: WallpaperHelper.requestAddCustomWallpaper() }
+                            FluButton { text: "+ 新增"; Layout.preferredWidth: 80; Layout.preferredHeight: 75; onClicked: WallpaperHelper.requestAddCustomWallpaper() }
                         }
                     }
 
@@ -96,7 +96,7 @@ FluContentPage {
                     anchors { left: parent.left; top: parent.top; right: parent.right; margins: 16 }
                     spacing: 12
 
-                    FluText { text: "外观"; font: FluTextStyle.Subtitle }
+                    FluText { text: "外觀"; font: FluTextStyle.Subtitle }
 
                     RowLayout {
                         FluText { text: "深色模式"; Layout.preferredWidth: 140 }
@@ -130,7 +130,7 @@ FluContentPage {
                     anchors { left: parent.left; top: parent.top; right: parent.right; margins: 16 }
                     spacing: 12
 
-                    FluText { text: "高级"; font: FluTextStyle.Subtitle }
+                    FluText { text: "進階"; font: FluTextStyle.Subtitle }
 
                     RowLayout {
                         FluText { text: "OpenGL"; Layout.preferredWidth: 140 }
@@ -138,11 +138,11 @@ FluContentPage {
                             checked: OtherSettingsHandler.useOpenGL
                             clickListener: function() { OtherSettingsHandler.useOpenGL = !checked }
                         }
-                        FluText { text: "(重启生效)"; font: FluTextStyle.Caption; color: FluTheme.fontSecondaryColor }
+                        FluText { text: "(重新啟動後生效)"; font: FluTextStyle.Caption; color: FluTheme.fontSecondaryColor }
                     }
 
                     RowLayout {
-                        FluText { text: "刷新间隔"; Layout.preferredWidth: 140 }
+                        FluText { text: "重新整理間隔"; Layout.preferredWidth: 140 }
                         FluSlider {
                             id: refSlide; Layout.fillWidth: true
                             from: 1000; to: 30000; stepSize: 1000
@@ -153,9 +153,9 @@ FluContentPage {
                     }
 
                     RowLayout {
-                        FluText { text: "ADB服务"; Layout.preferredWidth: 140 }
+                        FluText { text: "ADB 服務"; Layout.preferredWidth: 140 }
                         FluButton {
-                            text: ConnectManager.adbServerStarting ? "重启中..." : "重启"
+                            text: ConnectManager.adbServerStarting ? "重新啟動中..." : "重新啟動"
                             enabled: !ConnectManager.adbServerStarting
                             onClicked: ConnectManager.restartADBServer()
                         }
@@ -175,7 +175,7 @@ FluContentPage {
                     anchors { left: parent.left; top: parent.top; right: parent.right; margins: 16 }
                     spacing: 4
 
-                    FluText { text: "关于"; font: FluTextStyle.Subtitle }
+                    FluText { text: "關於"; font: FluTextStyle.Subtitle }
                     FluText { text: "AndroidTools v0.1.0"; font: FluTextStyle.Body }
                     FluText { text: "Qt 6.x  ·  MIT License"; font: FluTextStyle.Caption; color: FluTheme.fontSecondaryColor }
                 }

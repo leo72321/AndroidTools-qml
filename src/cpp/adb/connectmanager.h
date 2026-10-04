@@ -32,6 +32,7 @@ public:
 public slots:
     void startCheckDevice();
     void stopCheckDevice();
+    void cleanup();
         
     void startADBServer(std::function<void()> callback = nullptr);
     void killADBServer();
