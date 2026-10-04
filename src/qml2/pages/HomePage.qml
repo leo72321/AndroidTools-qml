@@ -340,18 +340,47 @@ FluContentPage {
                         ColumnLayout {
                             spacing: 0
                             Layout.fillWidth: true
+                            Layout.minimumWidth: 0
                             FluText {
+                                id: connTitleText
                                 text: page.connectionTitle
                                 font: FluTextStyle.BodyStrong
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+
+                                MouseArea {
+                                    id: connTitleHover
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    acceptedButtons: Qt.NoButton
+                                }
+                                FluTooltip {
+                                    visible: connTitleHover.containsMouse && connTitleText.text.length > 0
+                                    text: connTitleText.text
+                                    delay: 500
+                                }
                             }
                             FluText {
+                                id: connHintText
                                 text: page.connectionHint
                                 font: FluTextStyle.Caption
                                 color: FluTheme.fontSecondaryColor
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+
+                                MouseArea {
+                                    id: connHintHover
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    acceptedButtons: Qt.NoButton
+                                }
+                                FluTooltip {
+                                    visible: connHintHover.containsMouse && connHintText.text.length > 0
+                                    text: connHintText.text
+                                    delay: 500
+                                }
                             }
                         }
 
@@ -381,8 +410,8 @@ FluContentPage {
                 spacing: 8
 
                 Panel {
-                    Layout.preferredWidth: 250
-                    Layout.minimumWidth: 230
+                    Layout.preferredWidth: 270
+                    Layout.minimumWidth: 250
                     Layout.fillHeight: true
                     ColumnLayout {
                         anchors { fill: parent; margins: 10 }
@@ -394,14 +423,15 @@ FluContentPage {
                             Layout.fillWidth: true
                             spacing: 8
                             BatteryCanvas {
-                                Layout.preferredWidth: 70
-                                Layout.preferredHeight: 98
+                                Layout.preferredWidth: 60
+                                Layout.preferredHeight: 90
                                 level: page.device ? page.device.batteryLevel : 0
                                 charging: page.device ? page.device.chargingType !== ADT.None : false
                                 showChargingText: false
                             }
                             ColumnLayout {
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: 0
                                 spacing: 6
                                 MetricLine { name: "电量"; value: page.device ? page.device.batteryLevel + "%" : "--"; percent: page.device ? page.device.batteryLevel : 0; accent: page.batteryColor(page.device ? page.device.batteryLevel : 0) }
                                 MetricLine { name: "温度"; value: page.batteryTemp.toFixed(1) + "C"; percent: Math.min(100, Math.max(0, (page.batteryTemp - 20) * 2)); accent: page.batteryTemp > 44 ? "#d83b01" : "#0f7b6c" }
@@ -820,150 +850,67 @@ FluContentPage {
 
                         Item {
                             RowLayout {
-                                anchors { fill: parent; margins: 6 }
-                                spacing: 8
+                                anchors.centerIn: parent
+                                width: Math.min(parent.width - 40, 720)
+                                spacing: 20
 
-                                ColumnLayout {
-                                    Layout.preferredWidth: 400
-                                    Layout.minimumWidth: 350
-                                    Layout.maximumWidth: 420
-                                    Layout.fillHeight: true
-                                    spacing: 6
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 6
-                                        FluComboBox {
-                                            model: ["第三方", "系统", "全部"]
-                                            currentIndex: 0
-                                            Layout.preferredWidth: 110
-                                            onCurrentIndexChanged: {
-                                                page.selectApp("", "", "", "")
-                                                AppDetailControl.softListType = currentIndex
-                                            }
-                                        }
-                                        FluText { text: homeAppList.count + " 个应用"; font: FluTextStyle.Caption; color: FluTheme.fontSecondaryColor; Layout.fillWidth: true }
-                                        ActionButton { label: AppDetailControl.busy ? "处理中" : "安装 APK"; icon: FluentIcons.Add; dense: true; Layout.preferredWidth: 104; enabled: !!page.device && !AppDetailControl.busy; onPressed: apkDialog.open() }
-                                    }
-                                    ListView {
-                                        id: homeAppList
-                                        Layout.fillWidth: true
-                                        Layout.fillHeight: true
-                                        clip: true
-                                        model: SoftListModel
-                                        spacing: 3
-                                        delegate: Rectangle {
-                                            width: ListView.view.width
-                                            height: 44
-                                            radius: 7
-                                            color: page.selectedPackage === model.packageName
-                                                   ? Qt.rgba(0.06, 0.48, 0.42, FluTheme.dark ? 0.28 : 0.14)
-                                                   : (mouse.containsMouse ? (FluTheme.dark ? Qt.rgba(1,1,1,0.055) : Qt.rgba(0,0,0,0.035)) : "transparent")
-                                            RowLayout {
-                                                anchors { fill: parent; leftMargin: 8; rightMargin: 8; topMargin: 4; bottomMargin: 4 }
-                                                spacing: 9
-                                                AppIconBox {
-                                                    Layout.preferredWidth: 32
-                                                    Layout.preferredHeight: 32
-                                                    source: model.icon || ""
-                                                    title: model.appName || model.packageName || ""
-                                                    accent: model.isSystemApp ? "#64748b" : "#0f7b6c"
-                                                }
-                                                ColumnLayout {
-                                                    Layout.fillWidth: true
-                                                    Layout.minimumWidth: 0
-                                                    spacing: 0
-                                                    FluText { text: model.appName || model.packageName || "?"; font: FluTextStyle.Body; Layout.fillWidth: true; Layout.minimumWidth: 0; elide: Text.ElideRight }
-                                                    FluText { text: model.packageName || ""; font: FluTextStyle.Caption; color: FluTheme.fontSecondaryColor; Layout.fillWidth: true; Layout.minimumWidth: 0; elide: Text.ElideMiddle }
-                                                }
-                                                FluText {
-                                                    text: model.versionName || ""
-                                                    font: FluTextStyle.Caption
-                                                    color: FluTheme.fontSecondaryColor
-                                                    Layout.preferredWidth: 52
-                                                    elide: Text.ElideRight
-                                                    horizontalAlignment: Text.AlignRight
-                                                }
-                                            }
-                                            Timer {
-                                                interval: 100 + Math.min(index, 8) * 60
-                                                running: !model.icon && (model.packageName || "").length > 0
-                                                repeat: false
-                                                onTriggered: AppDetailControl.requestLoadIcon(model.packageName || "")
-                                            }
-                                            MouseArea {
-                                                id: mouse
-                                                anchors.fill: parent
-                                                hoverEnabled: true
-                                                onClicked: {
-                                                    homeAppList.currentIndex = index
-                                                    page.selectApp(model.packageName, model.appName, model.versionName, model.icon)
-                                                }
-                                            }
-                                        }
+                                Rectangle {
+                                    Layout.preferredWidth: 64
+                                    Layout.preferredHeight: 64
+                                    radius: 16
+                                    color: Qt.rgba(0.06, 0.48, 0.42, FluTheme.dark ? 0.25 : 0.12)
+                                    border.width: 1
+                                    border.color: Qt.rgba(0.06, 0.48, 0.42, 0.35)
+
+                                    FluIcon {
+                                        anchors.centerIn: parent
+                                        iconSource: FluentIcons.Apps
+                                        iconSize: 32
+                                        iconColor: "#0f7b6c"
                                     }
                                 }
 
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: 0
-                                    Layout.fillHeight: true
-                                    spacing: 7
+                                    spacing: 4
 
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Layout.minimumWidth: 0
-                                        spacing: 10
-                                        AppIconBox {
-                                            Layout.preferredWidth: 44
-                                            Layout.preferredHeight: 44
-                                            source: page.selectedAppIcon
-                                            title: page.selectedAppName || page.selectedPackage
-                                            accent: "#0f7b6c"
-                                        }
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            Layout.minimumWidth: 0
-                                            spacing: 0
-                                            FluText {
-                                                text: page.selectedAppName || page.selectedPackage || "选择应用"
-                                                font: FluTextStyle.BodyStrong
-                                                Layout.fillWidth: true
-                                                Layout.minimumWidth: 0
-                                                elide: Text.ElideRight
-                                            }
-                                            FluText {
-                                                text: AppDetailControl.busy ? "应用操作进行中，请稍候" : (page.selectedPackage.length > 0 ? page.selectedPackage : "从左侧列表选择应用，或直接拖入 APK")
-                                                font: FluTextStyle.Caption
-                                                color: FluTheme.fontSecondaryColor
-                                                Layout.fillWidth: true
-                                                Layout.minimumWidth: 0
-                                                elide: Text.ElideMiddle
-                                            }
-                                        }
+                                    FluText {
+                                        text: "应用管理已升级为独立应用中心"
+                                        font: FluTextStyle.BodyStrong
                                     }
-
-                                    GridLayout {
+                                    FluText {
+                                        text: "支持名称与包名即时搜索、全选/反选多选、批量启停、APK 提取及带有进度跟踪的批量卸载完整功能。"
+                                        font: FluTextStyle.Caption
+                                        color: FluTheme.fontSecondaryColor
+                                        wrapMode: Text.WordWrap
                                         Layout.fillWidth: true
-                                        columns: 6
-                                        columnSpacing: 6
-                                        rowSpacing: 6
-                                        ActionButton { label: "启动"; dense: true; Layout.fillWidth: true; enabled: !!page.selectedPackage && !AppDetailControl.busy; onPressed: AppDetailControl.startApp(page.selectedPackage) }
-                                        ActionButton { label: "停止"; dense: true; Layout.fillWidth: true; enabled: !!page.selectedPackage && !AppDetailControl.busy; onPressed: AppDetailControl.stopApp(page.selectedPackage) }
-                                        ActionButton { label: "提取"; dense: true; Layout.fillWidth: true; enabled: !!page.selectedPackage && !AppDetailControl.busy; onPressed: extractDialog.open() }
-                                        ActionButton { label: "冻结"; dense: true; Layout.fillWidth: true; enabled: !!page.selectedPackage && !AppDetailControl.busy; onPressed: AppDetailControl.freezeApp(page.selectedPackage) }
-                                        ActionButton { label: "清数据"; dense: true; Layout.fillWidth: true; enabled: !!page.selectedPackage && !AppDetailControl.busy; accent: "#ca8a04"; onPressed: AppDetailControl.clearData(page.selectedPackage) }
-                                        ActionButton { label: "卸载"; dense: true; Layout.fillWidth: true; enabled: !!page.selectedPackage && !AppDetailControl.busy; accent: "#d83b01"; onPressed: AppDetailControl.uninstallApp(page.selectedPackage) }
                                     }
+                                }
 
-                                    GridLayout {
-                                        Layout.fillWidth: true
-                                        columns: 2
-                                        columnSpacing: 6
-                                        rowSpacing: 6
-                                        CompactTile { label: "版本"; value: page.selectedAppVersion || (AppDetailControl.versionCode > 0 ? String(AppDetailControl.versionCode) : "--"); accent: "#2563eb" }
-                                        CompactTile { label: "版本码"; value: AppDetailControl.versionCode > 0 ? String(AppDetailControl.versionCode) : "--"; accent: "#2563eb" }
-                                        CompactTile { label: "安装"; value: AppDetailControl.installDate || "--"; accent: "#64748b" }
-                                        CompactTile { label: "SDK"; value: (AppDetailControl.minSdk || "--") + " -> " + (AppDetailControl.targetSdk || "--"); accent: "#7c3aed" }
+                                RowLayout {
+                                    spacing: 8
+                                    ActionButton {
+                                        label: AppDetailControl.busy ? "处理中" : "安装 APK"
+                                        icon: FluentIcons.Add
+                                        dense: true
+                                        Layout.preferredWidth: 104
+                                        enabled: !!page.device && !AppDetailControl.busy
+                                        onPressed: apkDialog.open()
+                                    }
+                                    ActionButton {
+                                        label: "打开应用管理"
+                                        icon: FluentIcons.Apps
+                                        dense: true
+                                        accent: "#0f7b6c"
+                                        Layout.preferredWidth: 120
+                                        onPressed: {
+                                            if (typeof navView !== "undefined" && navView) {
+                                                navView.setCurrentIndex(1)
+                                            } else if (Window.window && Window.window.navigateTo) {
+                                                Window.window.navigateTo(1)
+                                            }
+                                        }
                                     }
                                 }
                             }

@@ -22,10 +22,58 @@ Rectangle {
         RowLayout {
             Layout.fillWidth: true
             Layout.minimumWidth: 0
+            spacing: 6
             Rectangle { Layout.preferredWidth: 5; Layout.preferredHeight: 5; radius: 3; color: tile.accent }
-            FluText { text: tile.label; font: FluTextStyle.Caption; color: FluTheme.fontSecondaryColor; Layout.fillWidth: true; Layout.minimumWidth: 0; elide: Text.ElideRight }
-            FluText { text: tile.sub; font: FluTextStyle.Caption; color: FluTheme.fontSecondaryColor; visible: tile.sub.length > 0; Layout.maximumWidth: tile.width * 0.45; elide: Text.ElideRight }
+            FluText {
+                text: tile.label
+                font: FluTextStyle.Caption
+                color: FluTheme.fontSecondaryColor
+                Layout.preferredWidth: implicitWidth
+                elide: Text.ElideRight
+            }
+            FluText {
+                id: subText
+                text: tile.sub
+                font: FluTextStyle.Caption
+                color: FluTheme.fontSecondaryColor
+                visible: tile.sub.length > 0
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                horizontalAlignment: Text.AlignRight
+                elide: Text.ElideRight
+
+                MouseArea {
+                    id: subHover
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    acceptedButtons: Qt.NoButton
+                }
+                FluTooltip {
+                    visible: subHover.containsMouse && subText.text.length > 0
+                    text: subText.text
+                    delay: 500
+                }
+            }
         }
-        FluText { text: tile.value; font: FluTextStyle.BodyStrong; Layout.fillWidth: true; Layout.minimumWidth: 0; elide: Text.ElideRight }
+        FluText {
+            id: valueText
+            text: tile.value
+            font: FluTextStyle.BodyStrong
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            elide: Text.ElideRight
+
+            MouseArea {
+                id: valHover
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.NoButton
+            }
+            FluTooltip {
+                visible: valHover.containsMouse && valueText.text.length > 0
+                text: valueText.text
+                delay: 500
+            }
+        }
     }
 }

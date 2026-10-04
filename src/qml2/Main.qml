@@ -13,8 +13,8 @@ FluWindow {
     launchMode: FluWindowType.Standard
     fitsAppBarWindows: true
     fixSize: false
-    minimumWidth: 980
-    minimumHeight: 720
+    minimumWidth: 1060
+    minimumHeight: 740
 
     appBar: FluAppBar {
         height: 30
@@ -53,6 +53,10 @@ FluWindow {
         FluTheme.darkMode = App.themeType === App.Dark ? FluThemeType.Dark : FluThemeType.Light
     }
 
+    function navigateTo(index) {
+        if (navView) navView.setCurrentIndex(index)
+    }
+
     Component.onCompleted: applyTheme()
 
     Connections {
@@ -75,6 +79,12 @@ FluWindow {
                 title: "控制台"
                 icon: FluentIcons.Home
                 url: "qrc:/qml2/pages/HomePage.qml"
+                onTap: { navView.push(url) }
+            }
+            FluPaneItem {
+                title: "应用"
+                icon: FluentIcons.Apps
+                url: "qrc:/qml2/pages/AppPage.qml"
                 onTap: { navView.push(url) }
             }
             FluPaneItem {

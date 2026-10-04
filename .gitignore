@@ -16,6 +16,8 @@ cmake-*
 *.dll
 *.so
 *.dylib
+*.zip
+artifact/
 
 # Package manager
 node_modules/

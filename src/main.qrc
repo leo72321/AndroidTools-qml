@@ -6,6 +6,7 @@
 
         <file>qml2/Main.qml</file>
         <file>qml2/pages/HomePage.qml</file>
+        <file>qml2/pages/AppPage.qml</file>
         <file>qml2/pages/PerformancePage.qml</file>
         <file>qml2/pages/SettingPage.qml</file>
         <file>qml2/pages/home/ActionButton.qml</file>
