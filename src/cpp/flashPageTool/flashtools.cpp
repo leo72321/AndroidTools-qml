@@ -69,7 +69,11 @@ void FlashTools::executeCommand(const QStringList &args, const QString &workDir)
 
 #elif defined(Q_OS_WIN)
     program = "cmd.exe";
-    terminalArgs << "/k" << QString("cd /d \"%1\" && %2").arg(workingDir, command);
+    QString fullCmd = QString("cd /d \"%1\" && %2").arg(workingDir, command);
+    if (!args.isEmpty()) {
+        fullCmd += " " + args.join(" ");
+    }
+    terminalArgs << "/k" << fullCmd;
 
 #elif defined(Q_OS_MAC)
     QString scriptPath = QDir::temp().filePath("run_command.command");
@@ -97,8 +101,8 @@ void FlashTools::executeCommand(const QStringList &args, const QString &workDir)
     }
 #endif
 
-    // 添加用户命令参数（对于macOS，参数已经写入脚本）
-#ifndef Q_OS_MAC
+    // 添加用户命令参数（对于macOS和Windows，参数已分别写入脚本或命令行）
+#if !defined(Q_OS_MAC) && !defined(Q_OS_WIN)
     terminalArgs << args;
 #endif
 

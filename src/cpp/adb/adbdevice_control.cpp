@@ -16,7 +16,12 @@ void ADBDevice::shotScreen(const QString &outPath)
     args << "-s" << code() << "exec-out" << "screencap" << "-p";
 
     QProcess process;
-    process.start("adb", args);
+#ifdef Q_OS_WIN
+    const QString adbCmd = "adb.exe";
+#else
+    const QString adbCmd = "adb";
+#endif
+    process.start(adbCmd, args);
     if (process.waitForFinished()) {
         QByteArray output = process.readAllStandardOutput();
         QFile file(filePath);

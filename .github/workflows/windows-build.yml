@@ -1,0 +1,105 @@
+name: Windows Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Windows x64 Build
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.9.3'
+          arch: win64_msvc2022_64
+          modules: 'qt5compat qtwebsockets qtshadertools'
+          cache: true
+
+      - name: Download Android platform-tools
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Write-Host "Downloading Google Android platform-tools..."
+          Invoke-WebRequest -Uri "https://dl.google.com/android/repository/platform-tools-latest-windows.zip" -OutFile "platform-tools.zip"
+          Expand-Archive -Path "platform-tools.zip" -DestinationPath "." -Force
+
+      - name: Configure CMake
+        shell: pwsh
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
+
+      - name: Build
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --parallel
+
+      - name: Package Portable Distribution
+        shell: pwsh
+        run: |
+          $dist = "dist"
+          New-Item -ItemType Directory -Path "$dist/tools" -Force | Out-Null
+          New-Item -ItemType Directory -Path "$dist/qml/FluentUI" -Force | Out-Null
+
+          # 1. 放置 AndroidTools.exe
+          if (Test-Path "build/AndroidTools.exe") {
+              Copy-Item "build/AndroidTools.exe" -Destination "$dist/" -Force
+          } elseif (Test-Path "build/Release/AndroidTools.exe") {
+              Copy-Item "build/Release/AndroidTools.exe" -Destination "$dist/" -Force
+          } else {
+              throw "AndroidTools.exe not found in build directory"
+          }
+
+          # 2. 收集 QtScrcpyCore 相依檔 (ffmpeg DLLs, scrcpy-server 等)
+          if (Test-Path "src/cpp/imagePageTool/scrcpy/core/src/third_party/ffmpeg/bin/x64") {
+              Copy-Item "src/cpp/imagePageTool/scrcpy/core/src/third_party/ffmpeg/bin/x64/*.dll" -Destination "$dist/" -Force
+          }
+          if (Test-Path "src/cpp/imagePageTool/scrcpy/core/src/third_party/scrcpy-server") {
+              Copy-Item "src/cpp/imagePageTool/scrcpy/core/src/third_party/scrcpy-server" -Destination "$dist/" -Force
+          }
+          if (Test-Path "build/lib") {
+              Get-ChildItem -Path "build/lib" -Include @("*.dll", "scrcpy-server") -Recurse | Copy-Item -Destination "$dist/" -Force
+          }
+
+          # 3. 收集 platform-tools (adb.exe, fastboot.exe 等) 放入根目錄及 tools/ 目錄
+          if (Test-Path "platform-tools") {
+              Copy-Item "platform-tools/*" -Destination "$dist/" -Force -Recurse
+              Copy-Item "platform-tools/*" -Destination "$dist/tools/" -Force -Recurse
+          }
+
+          # 4. 收集 FluentUI QML 模組至 portable 目錄
+          if (Test-Path "build/qml/FluentUI") {
+              Copy-Item -Path "build/qml/FluentUI/*" -Destination "$dist/qml/FluentUI" -Force -Recurse
+          } elseif (Test-Path "build/Release/qml/FluentUI") {
+              Copy-Item -Path "build/Release/qml/FluentUI/*" -Destination "$dist/qml/FluentUI" -Force -Recurse
+          }
+
+          # 5. 使用 windeployqt 收集 Qt runtime 及 QML 依賴 (帶上 --qmldir src/qml2 與 FluentUI qmldir)
+          $fluentUiQmlDir = if (Test-Path "$dist/qml/FluentUI") { "$dist/qml/FluentUI" } else { "build/qml/FluentUI" }
+          windeployqt --qmldir src/qml2 --qmldir $fluentUiQmlDir --qmldir third_party/FluentUI/src/Qt6/imports/FluentUI "$dist/AndroidTools.exe" --compiler-runtime
+          if ($LASTEXITCODE -ne 0) { throw "windeployqt failed" }
+
+          # 6. 壓縮為 AndroidTools-Windows-x64.zip
+          Compress-Archive -Path "$dist/*" -DestinationPath "AndroidTools-Windows-x64.zip" -Force
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AndroidTools-Windows-x64
+          path: AndroidTools-Windows-x64.zip

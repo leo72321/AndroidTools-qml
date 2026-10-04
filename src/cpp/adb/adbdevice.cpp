@@ -257,7 +257,12 @@ bool ADBDevice::startAndroidService()
     }
 
     // 启动服务
-    m_serverPro->start("adb", {"-s", code(), "shell", "CLASSPATH=/data/local/tmp/androidtools-server.dex app_process / com.mhduiy.androidtoolsserver.SystemInfoServer 18888"});
+#ifdef Q_OS_WIN
+    const QString adbCmd = "adb.exe";
+#else
+    const QString adbCmd = "adb";
+#endif
+    m_serverPro->start(adbCmd, {"-s", code(), "shell", "CLASSPATH=/data/local/tmp/androidtools-server.dex app_process / com.mhduiy.androidtoolsserver.SystemInfoServer 18888"});
     m_serverPro->waitForStarted(3000);
     return true;
 }

@@ -12,7 +12,23 @@ set(SRC_PATHS
     src/main.cpp
 )
 
-find_package(Qt6 REQUIRED COMPONENTS Core Quick Widgets Gui Network WebSockets QuickControls2 Concurrent DBus ShaderTools)
+set(QT_COMPONENTS
+    Core
+    Quick
+    Widgets
+    Gui
+    Network
+    WebSockets
+    QuickControls2
+    Concurrent
+    ShaderTools
+)
+
+if(UNIX AND NOT APPLE)
+    list(APPEND QT_COMPONENTS DBus)
+endif()
+
+find_package(Qt6 REQUIRED COMPONENTS ${QT_COMPONENTS})
 
 add_executable(${EXE_NAME}
     ${SRC_PATHS}
@@ -55,7 +71,6 @@ endif()
 
 target_link_libraries(${EXE_NAME} PRIVATE
     Qt6::Core
-    Qt6::DBus
     Qt6::Quick
     Qt6::Widgets
     Qt6::Gui
@@ -66,6 +81,10 @@ target_link_libraries(${EXE_NAME} PRIVATE
     Qt6::ShaderTools
 )
 
+if(UNIX AND NOT APPLE)
+    target_link_libraries(${EXE_NAME} PRIVATE Qt6::DBus)
+endif()
+
 set(BUNDLED_ADB_DIR "${CMAKE_SOURCE_DIR}/src/cpp/imagePageTool/scrcpy/core/src/third_party/adb")
 if(APPLE)
     set(BUNDLED_ADB "${BUNDLED_ADB_DIR}/mac/adb")
@@ -74,6 +93,16 @@ if(APPLE)
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${FLUENTUI_QML_PLUGIN_DIRECTORY}" "$<TARGET_BUNDLE_DIR:${EXE_NAME}>/Contents/Resources/qml/FluentUI"
         COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_DIR:${EXE_NAME}>/Contents/Resources/tools"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BUNDLED_ADB}" "$<TARGET_BUNDLE_DIR:${EXE_NAME}>/Contents/Resources/tools/adb"
+    )
+elseif(WIN32)
+    set(BUNDLED_ADB "${BUNDLED_ADB_DIR}/win/adb.exe")
+    add_custom_command(TARGET ${EXE_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${EXE_NAME}>/qml/FluentUI"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${FLUENTUI_QML_PLUGIN_DIRECTORY}" "$<TARGET_FILE_DIR:${EXE_NAME}>/qml/FluentUI"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${EXE_NAME}>/tools"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BUNDLED_ADB_DIR}/win/adb.exe" "$<TARGET_FILE_DIR:${EXE_NAME}>/tools/adb.exe"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BUNDLED_ADB_DIR}/win/AdbWinApi.dll" "$<TARGET_FILE_DIR:${EXE_NAME}>/tools/AdbWinApi.dll"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BUNDLED_ADB_DIR}/win/AdbWinUsbApi.dll" "$<TARGET_FILE_DIR:${EXE_NAME}>/tools/AdbWinUsbApi.dll"
     )
 elseif(UNIX)
     set(BUNDLED_ADB "${BUNDLED_ADB_DIR}/linux/adb")

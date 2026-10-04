@@ -32,6 +32,7 @@ bool checkADB()
     const QString appDir = QCoreApplication::applicationDirPath();
     QString adbPath = QStandardPaths::findExecutable(executable);
     const QStringList bundledPaths = {
+        appDir + "/" + executable,
         appDir + "/tools/" + executable,
         appDir + "/../Resources/tools/" + executable,
         appDir + "/../lib/android-tools/tools/" + executable,
