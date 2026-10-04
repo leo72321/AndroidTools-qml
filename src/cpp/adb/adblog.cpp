@@ -68,7 +68,7 @@ void ADBLogModel::commitLog(ADBLogType type, const QString &logMeg)
 
     beginInsertRows(QModelIndex(), m_logInfo.size(), m_logInfo.size());
     const QString formatLog = QString("[%1] %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss"), logMeg.trimmed());
-    m_logInfo.append({.type = type, .log = formatLog});
+    m_logInfo.append(ADBLog{type, formatLog});
     endInsertRows();
 }
 
