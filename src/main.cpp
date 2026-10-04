@@ -32,7 +32,6 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
-#include "third_party/FluentUI/src/FluTextStyle.h"
 #endif
 
 bool checkADB()
@@ -107,39 +106,6 @@ int main(int argc, char *argv[])
     QFont defaultFont = app.font();
     defaultFont.setFamilies(fontFamilies);
     app.setFont(defaultFont);
-
-#ifdef Q_OS_WIN
-    QString selectedFamily = QStringLiteral("Microsoft JhengHei UI");
-    const QStringList availableFamilies = QFontDatabase::families();
-    for (const QString &family : fontFamilies) {
-        if (availableFamilies.contains(family, Qt::CaseInsensitive)) {
-            selectedFamily = family;
-            break;
-        }
-    }
-
-    auto *textStyle = FluTextStyle::getInstance();
-    if (textStyle) {
-        textStyle->family(selectedFamily);
-
-        auto createStyleFont = [&](int pixelSize, QFont::Weight weight = QFont::Normal) {
-            QFont f;
-            f.setFamily(selectedFamily);
-            f.setFamilies(fontFamilies);
-            f.setPixelSize(pixelSize);
-            f.setWeight(weight);
-            return f;
-        };
-
-        textStyle->Caption(createStyleFont(12));
-        textStyle->Body(createStyleFont(13));
-        textStyle->BodyStrong(createStyleFont(13, QFont::DemiBold));
-        textStyle->Subtitle(createStyleFont(20, QFont::DemiBold));
-        textStyle->Title(createStyleFont(28, QFont::DemiBold));
-        textStyle->TitleLarge(createStyleFont(40, QFont::DemiBold));
-        textStyle->Display(createStyleFont(68, QFont::DemiBold));
-    }
-#endif
 
 #ifdef Q_OS_LINUX
     qunsetenv("http_proxy");

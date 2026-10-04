@@ -51,6 +51,9 @@ FluWindow {
     }
     function applyTheme() {
         FluTheme.darkMode = App.themeType === App.Dark ? FluThemeType.Dark : FluThemeType.Light
+        if (typeof FluTextStyle !== "undefined") {
+            FluTextStyle.family = "Source Han Sans TC, Noto Sans TC, Noto Sans CJK TC, Microsoft JhengHei UI, Microsoft JhengHei, Segoe UI"
+        }
     }
 
     function navigateTo(index) {
